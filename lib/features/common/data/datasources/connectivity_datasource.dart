@@ -12,12 +12,18 @@ class ConnectivityDataSource implements IConnectivityDataSource {
 
   @override
   Future<bool> isConnected() async {
-    final result = await _connectivity.checkConnectivity();
-    return result != ConnectivityResult.none;
+    final results = await _connectivity.checkConnectivity();
+    return results.any((result) => result != ConnectivityResult.none);
   }
 
   @override
   Stream<ConnectivityResult> connectivity$() {
-    return _connectivity.onConnectivityChanged;
+    return _connectivity.onConnectivityChanged.map((results) {
+      // Return the first non-none result, or none if all are none
+      return results.firstWhere(
+        (result) => result != ConnectivityResult.none,
+        orElse: () => ConnectivityResult.none,
+      );
+    });
   }
 }
