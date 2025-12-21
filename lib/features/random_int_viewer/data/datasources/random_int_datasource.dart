@@ -13,9 +13,10 @@ class RandomIntRemoteDataSource implements IRandomIntDataSource {
 
   @override
   Future<int> getRandomInt() async {
-    final response = await _httpClient.execute(
+    return await _httpClient.execute<int>(
       method: 'GET',
       url: 'https://www.random.org/integers/',
+      parser: (data) => int.parse(data.toString().trim()),
       query: {
         'num': 1,
         'min': 1,
@@ -25,7 +26,6 @@ class RandomIntRemoteDataSource implements IRandomIntDataSource {
         'format': 'plain',
       },
     );
-    return int.parse(response);
   }
 }
 

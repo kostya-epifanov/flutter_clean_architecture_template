@@ -1,7 +1,7 @@
 import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_clean_template/core/network/http/request_status.dart';
 import 'package:flutter_clean_template/features/common/domain/listen_connectivity_usecase.dart';
@@ -51,17 +51,17 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   }
 
   Future<void> _loadRandomNumber() async {
-    emit(state.copyWith(requestStatus: const RequestStatus.inProgress()));
+    emit(state.copyWith(requestStatus: const InProgress()));
     final result = await _getRandomIntUseCase();
     if (result.isError) {
       emit(state.copyWith(
-        requestStatus: const RequestStatus.failed(),
+        requestStatus: const Failed(),
         number: -1,
       ));
       return;
     }
     emit(state.copyWith(
-      requestStatus: const RequestStatus.completed(),
+      requestStatus: const Completed(),
       number: result.successResult,
       timerCounter: _timerDuration,
     ));

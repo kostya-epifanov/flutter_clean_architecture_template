@@ -28,7 +28,7 @@ class HttpInterceptor extends Interceptor {
 
   @override
   void onError(
-    DioError err,
+    DioException err,
     ErrorInterceptorHandler handler,
   ) {
     _logger.d('HttpClient: <<< ERROR [${err.response?.statusCode}] '
