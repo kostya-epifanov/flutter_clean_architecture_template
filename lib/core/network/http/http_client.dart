@@ -25,11 +25,12 @@ class HttpClient {
     Map<String, dynamic>? query,
     Map<String, dynamic>? body,
     Map<String, dynamic>? headers,
-    int maxRetries = AppConfig.maxRetries,
+    int? maxRetries,
   }) async {
+    final retries = maxRetries ?? AppConfig.maxRetries;
     int attempts = 0;
 
-    while (attempts < maxRetries) {
+    while (attempts < retries) {
       try {
         final response = await _internalClient.request(
           _prepareUrl(
@@ -56,14 +57,14 @@ class HttpClient {
         attempts++;
 
         // Check if we should retry
-        final shouldRetry = _shouldRetry(e, attempts, maxRetries);
+        final shouldRetry = _shouldRetry(e, attempts, retries);
 
         if (!shouldRetry) {
           throw _handleDioException(e);
         }
 
         // Wait before retrying
-        if (attempts < maxRetries) {
+        if (attempts < retries) {
           await Future.delayed(AppConfig.retryDelay * attempts);
         }
       }

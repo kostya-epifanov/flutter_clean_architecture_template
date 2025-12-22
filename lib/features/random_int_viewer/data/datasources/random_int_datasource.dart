@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter_clean_template/core/config/app_config.dart';
 import 'package:flutter_clean_template/core/network/http/http_client.dart';
 
 abstract class IRandomIntDataSource {
@@ -13,9 +14,12 @@ class RandomIntRemoteDataSource implements IRandomIntDataSource {
 
   @override
   Future<int> getRandomInt() async {
+    // Use AppConfig for base URL and endpoint
+    final url = '${AppConfig.apiBaseUrl}${AppConfig.randomIntEndpoint}';
+
     return await _httpClient.execute<int>(
       method: 'GET',
-      url: 'https://www.random.org/integers/',
+      url: url,
       parser: (data) => int.parse(data.toString().trim()),
       query: {
         'num': 1,
