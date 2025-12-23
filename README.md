@@ -35,7 +35,7 @@ This project follows Clean Architecture with clear separation of concerns:
 1. Clone the repository
 
 ```bash
-https://github.com/kostya-epifanov/flutter_clean_architecture_template.git
+git clone https://github.com/kostya-epifanov/flutter_clean_architecture_template.git
 cd flutter_clean_architecture_template
 ```
 
