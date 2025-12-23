@@ -36,7 +36,7 @@ This project follows Clean Architecture with clear separation of concerns:
 
 ```bash
 https://github.com/kostya-epifanov/flutter_clean_architecture_template.git
-cd flutter_clean_architecture
+cd flutter_clean_architecture_template
 ```
 
 2. Install dependencies
