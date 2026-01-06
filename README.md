@@ -226,7 +226,6 @@ flutter build apk --release \
 
 - [Configuration Guide](docs/CONFIGURATION.md) - Comprehensive configuration management
   documentation
-- [IMPROVEMENTS.md](IMPROVEMENTS.md) - Improvement notes and changes
 
 ## 🤝 Contributing
 
