@@ -35,8 +35,8 @@ This project follows Clean Architecture with clear separation of concerns:
 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd flutter_clean_architecture
+git clone https://github.com/kostya-epifanov/flutter_clean_architecture_template.git
+cd flutter_clean_architecture_template
 ```
 
 2. Install dependencies
