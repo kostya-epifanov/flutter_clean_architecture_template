@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class AnimatedCounterWidget extends StatefulWidget {
   final int target;
@@ -6,11 +6,11 @@ class AnimatedCounterWidget extends StatefulWidget {
   final TextStyle textStyle;
 
   const AnimatedCounterWidget({
-    Key? key,
+    super.key,
     required this.target,
     required this.duration,
     required this.textStyle,
-  }) : super(key: key);
+  });
 
   @override
   AnimatedCounterWidgetState createState() => AnimatedCounterWidgetState();

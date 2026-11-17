@@ -37,12 +37,10 @@ class TimeoutException extends NetworkException {
 class ServerException extends NetworkException {
   const ServerException(
     int statusCode,
-    String message, {
-    dynamic originalError,
+    super.message, {
+    super.originalError,
   }) : super(
-          message,
           statusCode: statusCode,
-          originalError: originalError,
         );
 
   @override
