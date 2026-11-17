@@ -1,20 +1,17 @@
-import 'dart:math';
-
 import 'package:flutter_clean_template/core/config/app_config.dart';
 import 'package:flutter_clean_template/core/network/http/http_client.dart';
 
-abstract class IRandomIntDataSource {
+abstract class IRandomIntRemoteDataSource {
   Future<int> getRandomInt();
 }
 
-class RandomIntRemoteDataSource implements IRandomIntDataSource {
+class RandomIntRemoteDataSource implements IRandomIntRemoteDataSource {
   final HttpClient _httpClient;
 
-  RandomIntRemoteDataSource(this._httpClient);
+  const RandomIntRemoteDataSource(this._httpClient);
 
   @override
   Future<int> getRandomInt() async {
-    // Use AppConfig for base URL and endpoint
     final url = '${AppConfig.apiBaseUrl}${AppConfig.randomIntEndpoint}';
 
     return await _httpClient.execute<int>(
@@ -30,13 +27,5 @@ class RandomIntRemoteDataSource implements IRandomIntDataSource {
         'format': 'plain',
       },
     );
-  }
-}
-
-class RandomIntLocalDataSource implements IRandomIntDataSource {
-  @override
-  Future<int> getRandomInt() async {
-    final random = Random();
-    return random.nextInt(100);
   }
 }

@@ -5,7 +5,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/core/std/result.dart';
-import 'package:flutter_clean_template/features/common/domain/listen_connectivity_usecase.dart';
+import 'package:flutter_clean_template/features/common/domain/usecases/listen_connectivity_usecase.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 
 part 'random_int_viewer_state.dart';

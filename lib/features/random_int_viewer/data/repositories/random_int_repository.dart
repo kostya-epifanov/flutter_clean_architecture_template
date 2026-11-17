@@ -1,16 +1,16 @@
 import 'package:flutter_clean_template/features/common/data/datasources/connectivity_datasource.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_datasource.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/domain/repositories/random_int_repository.dart';
 
-abstract class IRandomIntRepository {
-  Future<int> getRandomInt();
-}
-
+/// Fetches the number from the remote API when online,
+/// and falls back to a locally generated one otherwise.
 class RandomIntRepository implements IRandomIntRepository {
   final IConnectivityDataSource _connectivityDataSource;
-  final RandomIntLocalDataSource _localDataSource;
-  final RandomIntRemoteDataSource _remoteDataSource;
+  final IRandomIntLocalDataSource _localDataSource;
+  final IRandomIntRemoteDataSource _remoteDataSource;
 
-  RandomIntRepository(
+  const RandomIntRepository(
     this._connectivityDataSource,
     this._localDataSource,
     this._remoteDataSource,

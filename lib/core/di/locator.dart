@@ -3,9 +3,12 @@ import 'package:flutter_clean_template/core/network/http/http_client.dart';
 import 'package:flutter_clean_template/core/network/http/http_interceptor.dart';
 import 'package:flutter_clean_template/features/common/data/datasources/connectivity_datasource.dart';
 import 'package:flutter_clean_template/features/common/data/repositories/connectivity_repository.dart';
-import 'package:flutter_clean_template/features/common/domain/listen_connectivity_usecase.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_datasource.dart';
+import 'package:flutter_clean_template/features/common/domain/repositories/connectivity_repository.dart';
+import 'package:flutter_clean_template/features/common/domain/usecases/listen_connectivity_usecase.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/data/repositories/random_int_repository.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/domain/repositories/random_int_repository.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 import 'package:get_it/get_it.dart';
@@ -31,8 +34,9 @@ void _setupServices() {
 
 void _setupDataSources() {
   locator.registerLazySingleton<IConnectivityDataSource>(() => ConnectivityDataSource(locator()));
-  locator.registerLazySingleton(() => RandomIntRemoteDataSource(locator()));
-  locator.registerLazySingleton(() => RandomIntLocalDataSource());
+  locator.registerLazySingleton<IRandomIntRemoteDataSource>(
+      () => RandomIntRemoteDataSource(locator()));
+  locator.registerLazySingleton<IRandomIntLocalDataSource>(() => RandomIntLocalDataSource());
 }
 
 void _setupRepositories() {
