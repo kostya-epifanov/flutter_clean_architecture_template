@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_clean_template/core/ui/injectable_state.dart';
 import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
@@ -15,6 +16,20 @@ class RandomIntViewerScreen extends StatefulWidget {
 
 class _RandomIntViewerScreenState
     extends InjectableState<RandomIntViewerScreen, RandomIntViewerCubit, RandomIntViewerState> {
+  late final AppLifecycleListener _lifecycleListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(onHide: cubit.pause, onShow: cubit.resume);
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
   @override
   bool listenWhen(RandomIntViewerState previous, RandomIntViewerState current) =>
       previous.requestStatus != current.requestStatus &&
@@ -29,27 +44,33 @@ class _RandomIntViewerScreenState
 
   @override
   Widget builder(BuildContext context, RandomIntViewerState state) {
+    // The screen has no AppBar to pick a status bar style, and the default
+    // dark icons are unreadable on the dark background.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: _buildScaffold(state),
+    );
+  }
+
+  Widget _buildScaffold(RandomIntViewerState state) {
     return Scaffold(
       backgroundColor: const Color(0xFF333333),
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              _buildNumberWidget(state),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [ConnectivityLabel(state.networkStatus), const GetRandomNumberButton()],
-                ),
-              ),
-            ],
+      body: Center(child: _buildNumberWidget(state)),
+      // In the bottom bar slot the row stays above the system gesture area
+      // (the app draws edge-to-edge on Android 15+), and SnackBars appear
+      // above it instead of covering the status and the button.
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          // A Wrap rather than a Row: with large system fonts the button
+          // moves to a second line instead of overflowing.
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [ConnectivityLabel(state.networkStatus), const GetRandomNumberButton()],
           ),
-        ],
+        ),
       ),
     );
   }

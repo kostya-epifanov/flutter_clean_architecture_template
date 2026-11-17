@@ -19,7 +19,19 @@ class NoInternetException extends NetworkException {
   String toString() => 'NoInternetException: $message';
 }
 
-/// Thrown when a request times out
+/// Thrown when the server could not be reached within the connect timeout.
+///
+/// Like [NoInternetException], it means the host is unreachable from this
+/// network, as opposed to [RequestTimeoutException] where the server is
+/// reachable but slow.
+class ConnectionTimeoutException extends NetworkException {
+  const ConnectionTimeoutException() : super('Could not reach the server. Please try again.');
+
+  @override
+  String toString() => 'ConnectionTimeoutException: $message';
+}
+
+/// Thrown when a connected server takes too long to send or receive data
 class RequestTimeoutException extends NetworkException {
   const RequestTimeoutException() : super('Request timed out. Please try again.');
 

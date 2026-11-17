@@ -24,9 +24,12 @@ class ConnectivityLabel extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white, fontSize: 12),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white, fontSize: 12),
+          ),
         ),
       ],
     );

@@ -14,7 +14,13 @@ class GetRandomNumberButton
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('GET RANDOM NUMBER', style: TextStyle(color: Colors.white, fontSize: 12)),
+          const Flexible(
+            child: Text(
+              'GET RANDOM NUMBER',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
           const SizedBox(width: 4),
           _buildStatusWidget(state),
         ],

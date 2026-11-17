@@ -40,11 +40,41 @@ void main() {
       verifyNever(() => remote.getRandomInt());
     });
 
-    test('propagates remote errors instead of silently falling back', () async {
+    test('falls back to local when the API is unreachable despite a reported network', () async {
       givenOnline(true);
       when(() => remote.getRandomInt()).thenThrow(const NoInternetException());
 
-      await expectLater(repository.getRandomInt(), throwsA(isA<NoInternetException>()));
+      expect(await repository.getRandomInt(), 1);
+    });
+
+    test('falls back to local when connecting to the API times out', () async {
+      givenOnline(true);
+      when(() => remote.getRandomInt()).thenThrow(const ConnectionTimeoutException());
+
+      expect(await repository.getRandomInt(), 1);
+    });
+
+    test('propagates a slow server instead of masking it', () async {
+      givenOnline(true);
+      when(() => remote.getRandomInt()).thenThrow(const RequestTimeoutException());
+
+      await expectLater(repository.getRandomInt(), throwsA(isA<RequestTimeoutException>()));
+      verifyNever(() => local.getRandomInt());
+    });
+
+    test('propagates server errors instead of masking them', () async {
+      givenOnline(true);
+      when(() => remote.getRandomInt()).thenThrow(const ServerException(503, 'unavailable'));
+
+      await expectLater(repository.getRandomInt(), throwsA(isA<ServerException>()));
+      verifyNever(() => local.getRandomInt());
+    });
+
+    test('propagates parse errors instead of masking them', () async {
+      givenOnline(true);
+      when(() => remote.getRandomInt()).thenThrow(const ParseException());
+
+      await expectLater(repository.getRandomInt(), throwsA(isA<ParseException>()));
       verifyNever(() => local.getRandomInt());
     });
   });

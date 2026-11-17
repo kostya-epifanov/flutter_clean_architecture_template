@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_clean_template/core/di/locator.dart';
 import 'package:flutter_clean_template/core/network/exceptions/network_exception.dart';
 import 'package:flutter_clean_template/core/std/result.dart';
@@ -117,5 +118,88 @@ void main() {
 
     expect(find.text(_snackBarText), findsOneWidget);
     expect(find.text('0'), findsOneWidget, reason: 'no number has been loaded yet');
+  });
+
+  testWidgets('asks for light status bar icons on the dark background', (tester) async {
+    givenResults([const Success(1)]);
+
+    await pumpScreen(tester);
+    await tester.pump();
+
+    expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light);
+  });
+
+  testWidgets('stops refreshing while the app is hidden and resumes when shown', (tester) async {
+    givenResults([const Success(1), const Success(2)]);
+    await pumpScreen(tester);
+    await settleNumber(tester);
+
+    tester.binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    await tester.pump(const Duration(seconds: refreshIntervalSeconds + 5));
+    verify(() => getRandomInt()).called(1);
+    expect(find.text('[$refreshIntervalSeconds]'), findsOneWidget);
+
+    tester.binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('[${refreshIntervalSeconds - 1}]'), findsOneWidget);
+  });
+
+  group('bottom bar', () {
+    const gestureInset = 48.0;
+
+    testWidgets('stays above the system gesture area', (tester) async {
+      tester.view.padding = const FakeViewPadding(bottom: gestureInset * 3); // physical px, dpr 3
+      tester.view.viewPadding = const FakeViewPadding(bottom: gestureInset * 3);
+      addTearDown(tester.view.reset);
+      givenResults([const Success(1)]);
+
+      await pumpScreen(tester);
+      await settleNumber(tester);
+
+      final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      for (final label in ['CHECKING', 'GET RANDOM NUMBER']) {
+        expect(
+          tester.getRect(find.text(label)).bottom,
+          lessThanOrEqualTo(screenHeight - gestureInset),
+          reason: '$label must not overlap the gesture area',
+        );
+      }
+    });
+
+    testWidgets('is not covered by the error SnackBar', (tester) async {
+      givenResults([const Failure(NoInternetException())]);
+
+      await pumpScreen(tester);
+      await tester.pump(); // deliver the failure
+      await tester.pumpAndSettle(); // finish the SnackBar entrance
+
+      final snackBar = tester.getRect(find.byType(SnackBar));
+      final button = tester.getRect(find.text('GET RANDOM NUMBER'));
+      expect(snackBar.overlaps(button), isFalse);
+    });
+
+    // Android 14+ lets users scale fonts up to 200%.
+    for (final scale in [1.6, 2.0]) {
+      testWidgets('does not overflow on a narrow phone at ${scale}x font size', (tester) async {
+        tester.view.physicalSize = const Size(1080, 1920); // 360 x 640 logical at dpr 3
+        tester.view.devicePixelRatio = 3;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        givenResults([const Success(1)]);
+
+        await pumpScreen(tester);
+        networkStatus.add(NetworkStatus.disconnected); // the longest label
+        await settleNumber(tester);
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('DISCONNECTED'), findsOneWidget);
+        expect(find.text('GET RANDOM NUMBER'), findsOneWidget);
+      });
+    }
   });
 }
