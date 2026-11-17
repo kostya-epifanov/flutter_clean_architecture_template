@@ -129,6 +129,25 @@ void main() {
     expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light);
   });
 
+  testWidgets('stops refreshing while the app is hidden and resumes when shown', (tester) async {
+    givenResults([const Success(1), const Success(2)]);
+    await pumpScreen(tester);
+    await settleNumber(tester);
+
+    tester.binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    await tester.pump(const Duration(seconds: refreshIntervalSeconds + 5));
+    verify(() => getRandomInt()).called(1);
+    expect(find.text('[$refreshIntervalSeconds]'), findsOneWidget);
+
+    tester.binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('[${refreshIntervalSeconds - 1}]'), findsOneWidget);
+  });
+
   group('bottom bar', () {
     const gestureInset = 48.0;
 

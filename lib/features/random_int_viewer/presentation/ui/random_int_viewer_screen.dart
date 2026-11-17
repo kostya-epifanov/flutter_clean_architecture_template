@@ -16,6 +16,20 @@ class RandomIntViewerScreen extends StatefulWidget {
 
 class _RandomIntViewerScreenState
     extends InjectableState<RandomIntViewerScreen, RandomIntViewerCubit, RandomIntViewerState> {
+  late final AppLifecycleListener _lifecycleListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(onHide: cubit.pause, onShow: cubit.resume);
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
   @override
   bool listenWhen(RandomIntViewerState previous, RandomIntViewerState current) =>
       previous.requestStatus != current.requestStatus &&

@@ -219,6 +219,123 @@ void main() {
     });
   });
 
+  group('pause and resume', () {
+    final start = DateTime(2026);
+
+    /// Runs [body] against a cubit whose clock follows fake time.
+    void runCubit(void Function(FakeAsync async, RandomIntViewerCubit cubit) body) {
+      fakeAsync((async) {
+        final cubit = RandomIntViewerCubit(
+          listenConnectivity,
+          getRandomInt,
+          now: () => start.add(async.elapsed),
+        );
+        async.flushMicrotasks(); // settle the initial request
+        body(async, cubit);
+        cubit.close();
+        async.flushMicrotasks();
+      });
+    }
+
+    test('neither counts down nor refreshes while paused', () {
+      givenResults([const Success(5)]);
+
+      runCubit((async, cubit) {
+        cubit.pause();
+        async.elapse(const Duration(minutes: 5));
+
+        expect(async.periodicTimerCount, 0);
+        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        verify(() => getRandomInt()).called(1);
+      });
+    });
+
+    test('continues the countdown, minus the paused time, when resumed early', () {
+      givenResults([const Success(5), const Success(6)]);
+
+      runCubit((async, cubit) {
+        async.elapse(const Duration(seconds: 10));
+        cubit.pause();
+        async.elapse(const Duration(seconds: 5));
+        cubit.resume();
+
+        expect(cubit.state.timerCounter, refreshIntervalSeconds - 15);
+        verify(() => getRandomInt()).called(1);
+
+        async.elapse(const Duration(seconds: refreshIntervalSeconds - 15));
+        verify(() => getRandomInt()).called(1);
+        expect(cubit.state.number, 6);
+      });
+    });
+
+    test('loads a new number at once when the refresh fell due while paused', () {
+      givenResults([const Success(5), const Success(6)]);
+
+      runCubit((async, cubit) {
+        cubit.pause();
+        async.elapse(const Duration(seconds: refreshIntervalSeconds + 15));
+        cubit.resume();
+        async.flushMicrotasks();
+
+        verify(() => getRandomInt()).called(2);
+        expect(cubit.state.number, 6);
+        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+      });
+    });
+
+    test('counts the paused time from when a pending request completes', () {
+      fakeAsync((async) {
+        final request = givenPendingRequest();
+        final cubit = RandomIntViewerCubit(
+          listenConnectivity,
+          getRandomInt,
+          now: () => start.add(async.elapsed),
+        );
+
+        cubit.pause();
+        async.elapse(const Duration(seconds: 20));
+        request.complete(const Success(3));
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 5));
+        cubit.resume();
+
+        expect(cubit.state.number, 3);
+        expect(cubit.state.timerCounter, refreshIntervalSeconds - 5);
+        verify(() => getRandomInt()).called(1);
+        cubit.close();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('ignores resume without pause, and a repeated pause', () {
+      givenResults([const Success(5)]);
+
+      runCubit((async, cubit) {
+        async.elapse(const Duration(seconds: 3));
+        cubit.resume();
+        expect(cubit.state.timerCounter, refreshIntervalSeconds - 3);
+        expect(async.periodicTimerCount, 1);
+
+        cubit.pause();
+        async.elapse(const Duration(seconds: 10));
+        cubit.pause(); // must not move the pause start
+        cubit.resume();
+        expect(cubit.state.timerCounter, refreshIntervalSeconds - 13);
+        expect(async.periodicTimerCount, 1);
+      });
+    });
+
+    test('pause and resume after close do not throw', () async {
+      givenResults([const Success(5)]);
+      final cubit = buildCubit();
+      await cubit.close();
+
+      cubit
+        ..pause()
+        ..resume();
+    });
+  });
+
   group('close', () {
     test('does not emit or throw when a pending request completes afterwards', () async {
       final request = givenPendingRequest();
