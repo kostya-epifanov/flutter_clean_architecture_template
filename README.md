@@ -43,7 +43,7 @@ RandomIntViewerScreen
 | **Cubit** (flutter_bloc) | The screen has a couple of intents; events would add ceremony without value. |
 | **GetIt** + `InjectableState` | One place for wiring; the screen resolves its cubit and `BlocProvider` owns its lifecycle. |
 | **`Result<T>` sealed type** | Use cases never throw; the cubit handles `Success`/`Failure` with an exhaustive `switch`. |
-| **`HttpClient` wrapper over Dio** | Retries transient failures (timeouts, connection errors, 5xx) with linear backoff and maps `DioException` to typed `NetworkException`s. |
+| **`HttpClient` wrapper over Dio** | Retries transient failures (read timeouts, 5xx) with linear backoff, fails fast when the server is unreachable and maps `DioException` to typed `NetworkException`s. |
 | **`NetworkStatus` domain entity** | Keeps `ConnectivityResult` out of domain/UI; the stream emits the current status first, then changes. |
 | **Compile-time environments** | `--dart-define` selects dev/staging/prod without flavors or extra files. |
 

@@ -18,7 +18,7 @@ class HttpClient {
       _maxRetries = maxRetries ?? AppConfig.maxRetries,
       _retryDelay = retryDelay ?? AppConfig.retryDelay {
     _dio.options
-      ..connectTimeout = AppConfig.httpTimeout
+      ..connectTimeout = AppConfig.connectTimeout
       ..receiveTimeout = AppConfig.httpTimeout
       ..sendTimeout = AppConfig.httpTimeout
       ..listFormat = ListFormat.csv;
@@ -29,7 +29,7 @@ class HttpClient {
 
   /// Performs the request and parses the body with [parser].
   ///
-  /// Transient failures (timeouts and 5xx responses) are retried up to
+  /// Transient failures (send/receive timeouts and 5xx responses) are retried up to
   /// `maxRetries` times with a linearly growing delay, so the request is sent
   /// at most `maxRetries + 1` times.
   Future<T> execute<T>({
@@ -67,7 +67,6 @@ class HttpClient {
 
   static bool _isRetryable(DioException error) {
     switch (error.type) {
-      case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
         return true;
@@ -75,8 +74,10 @@ class HttpClient {
         final statusCode = error.response?.statusCode ?? 0;
         return statusCode >= 500 && statusCode < 600;
       // The host could not be reached at all (no network, DNS failure,
-      // connection refused): retrying only delays the caller's fallback.
+      // connection refused, no answer within connectTimeout): retrying only
+      // delays the caller's fallback.
       case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
       case DioExceptionType.transformTimeout:
       case DioExceptionType.cancel:
       case DioExceptionType.badCertificate:

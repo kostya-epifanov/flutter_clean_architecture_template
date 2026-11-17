@@ -70,6 +70,13 @@ void main() {
         expect(adapter.requests, hasLength(2));
       });
 
+      test('does not retry a connect timeout, so callers can fall back at once', () async {
+        final client = buildClient([throwDio(DioExceptionType.connectionTimeout), respond('7')]);
+
+        await expectLater(getNumber(client), throwsA(isA<RequestTimeoutException>()));
+        expect(adapter.requests, hasLength(1));
+      });
+
       test('does not retry a connection error, so callers can fall back at once', () async {
         final client = buildClient([throwDio(DioExceptionType.connectionError), respond('7')]);
 
@@ -85,7 +92,7 @@ void main() {
       });
 
       test('gives up after maxRetries, sending maxRetries + 1 requests', () async {
-        final client = buildClient([throwDio(DioExceptionType.connectionTimeout)], maxRetries: 3);
+        final client = buildClient([throwDio(DioExceptionType.receiveTimeout)], maxRetries: 3);
 
         await expectLater(getNumber(client), throwsA(isA<RequestTimeoutException>()));
         expect(adapter.requests, hasLength(4));
@@ -108,7 +115,7 @@ void main() {
       test('waits a linearly growing delay between attempts', () {
         fakeAsync((async) {
           final client = buildClient(
-            [throwDio(DioExceptionType.connectionTimeout)],
+            [throwDio(DioExceptionType.receiveTimeout)],
             maxRetries: 2,
             retryDelay: const Duration(seconds: 1),
           );

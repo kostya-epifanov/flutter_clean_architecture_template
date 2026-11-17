@@ -51,8 +51,12 @@ class AppConfig {
       ? const bool.fromEnvironment('ENABLE_LOGGING')
       : _currentConfig.enableLogging;
 
-  /// HTTP request timeout duration
+  /// How long to wait for the server to send or receive data
   static Duration get httpTimeout => _currentConfig.httpTimeout;
+
+  /// How long to wait for a connection to the server. Kept short so that a
+  /// network without internet access falls back to local data quickly.
+  static const Duration connectTimeout = Duration(seconds: 10);
 
   /// Number of retry attempts for failed requests
   static int get maxRetries => _currentConfig.maxRetries;
@@ -76,6 +80,7 @@ class AppConfig {
       'environment=${environment.name}, '
       'apiBaseUrl=$apiBaseUrl, '
       'enableLogging=$enableLogging, '
+      'connectTimeout=${connectTimeout.inSeconds}s, '
       'httpTimeout=${httpTimeout.inSeconds}s, '
       'maxRetries=$maxRetries',
     );
