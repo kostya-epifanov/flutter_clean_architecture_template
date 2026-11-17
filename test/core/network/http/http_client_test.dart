@@ -63,11 +63,18 @@ void main() {
     });
 
     group('retries', () {
-      test('retries a connection error and returns the next success', () async {
-        final client = buildClient([throwDio(DioExceptionType.connectionError), respond('7')]);
+      test('retries a timeout and returns the next success', () async {
+        final client = buildClient([throwDio(DioExceptionType.receiveTimeout), respond('7')]);
 
         expect(await getNumber(client), 7);
         expect(adapter.requests, hasLength(2));
+      });
+
+      test('does not retry a connection error, so callers can fall back at once', () async {
+        final client = buildClient([throwDio(DioExceptionType.connectionError), respond('7')]);
+
+        await expectLater(getNumber(client), throwsA(isA<NoInternetException>()));
+        expect(adapter.requests, hasLength(1));
       });
 
       test('retries a 5xx response and returns the next success', () async {
@@ -78,9 +85,9 @@ void main() {
       });
 
       test('gives up after maxRetries, sending maxRetries + 1 requests', () async {
-        final client = buildClient([throwDio(DioExceptionType.connectionError)], maxRetries: 3);
+        final client = buildClient([throwDio(DioExceptionType.connectionTimeout)], maxRetries: 3);
 
-        await expectLater(getNumber(client), throwsA(isA<NoInternetException>()));
+        await expectLater(getNumber(client), throwsA(isA<RequestTimeoutException>()));
         expect(adapter.requests, hasLength(4));
       });
 
@@ -101,7 +108,7 @@ void main() {
       test('waits a linearly growing delay between attempts', () {
         fakeAsync((async) {
           final client = buildClient(
-            [throwDio(DioExceptionType.connectionError)],
+            [throwDio(DioExceptionType.connectionTimeout)],
             maxRetries: 2,
             retryDelay: const Duration(seconds: 1),
           );
@@ -122,7 +129,7 @@ void main() {
 
           async.elapse(const Duration(milliseconds: 1));
           expect(adapter.requests, hasLength(3));
-          expect(error, isA<NoInternetException>());
+          expect(error, isA<RequestTimeoutException>());
         });
       });
     });
