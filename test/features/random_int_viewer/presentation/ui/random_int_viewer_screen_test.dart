@@ -152,5 +152,25 @@ void main() {
       final button = tester.getRect(find.text('GET RANDOM NUMBER'));
       expect(snackBar.overlaps(button), isFalse);
     });
+
+    // Android 14+ lets users scale fonts up to 200%.
+    for (final scale in [1.6, 2.0]) {
+      testWidgets('does not overflow on a narrow phone at ${scale}x font size', (tester) async {
+        tester.view.physicalSize = const Size(1080, 1920); // 360 x 640 logical at dpr 3
+        tester.view.devicePixelRatio = 3;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        givenResults([const Success(1)]);
+
+        await pumpScreen(tester);
+        networkStatus.add(NetworkStatus.disconnected); // the longest label
+        await settleNumber(tester);
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('DISCONNECTED'), findsOneWidget);
+        expect(find.text('GET RANDOM NUMBER'), findsOneWidget);
+      });
+    }
   });
 }

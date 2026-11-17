@@ -39,8 +39,11 @@ class _RandomIntViewerScreenState
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // A Wrap rather than a Row: with large system fonts the button
+          // moves to a second line instead of overflowing.
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [ConnectivityLabel(state.networkStatus), const GetRandomNumberButton()],
           ),
         ),
