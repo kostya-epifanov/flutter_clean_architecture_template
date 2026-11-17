@@ -4,11 +4,7 @@ abstract class NetworkException implements Exception {
   final int? statusCode;
   final dynamic originalError;
 
-  const NetworkException(
-    this.message, {
-    this.statusCode,
-    this.originalError,
-  });
+  const NetworkException(this.message, {this.statusCode, this.originalError});
 
   @override
   String toString() => 'NetworkException: $message';
@@ -17,31 +13,25 @@ abstract class NetworkException implements Exception {
 /// Thrown when there's no internet connection
 class NoInternetException extends NetworkException {
   const NoInternetException()
-      : super(
-          'No internet connection. Please check your network settings.',
-        );
+    : super('No internet connection. Please check your network settings.');
 
   @override
   String toString() => 'NoInternetException: $message';
 }
 
 /// Thrown when a request times out
-class TimeoutException extends NetworkException {
-  const TimeoutException() : super('Request timed out. Please try again.');
+class RequestTimeoutException extends NetworkException {
+  const RequestTimeoutException()
+    : super('Request timed out. Please try again.');
 
   @override
-  String toString() => 'TimeoutException: $message';
+  String toString() => 'RequestTimeoutException: $message';
 }
 
 /// Thrown when server returns an error response
 class ServerException extends NetworkException {
-  const ServerException(
-    int statusCode,
-    super.message, {
-    super.originalError,
-  }) : super(
-          statusCode: statusCode,
-        );
+  const ServerException(int statusCode, super.message, {super.originalError})
+    : super(statusCode: statusCode);
 
   @override
   String toString() => 'ServerException($statusCode): $message';
@@ -52,10 +42,7 @@ class ParseException extends NetworkException {
   const ParseException({
     String message = 'Failed to parse response data',
     dynamic originalError,
-  }) : super(
-          message,
-          originalError: originalError,
-        );
+  }) : super(message, originalError: originalError);
 
   @override
   String toString() => 'ParseException: $message';
@@ -74,10 +61,7 @@ class UnknownNetworkException extends NetworkException {
   const UnknownNetworkException({
     String message = 'An unexpected error occurred',
     dynamic originalError,
-  }) : super(
-          message,
-          originalError: originalError,
-        );
+  }) : super(message, originalError: originalError);
 
   @override
   String toString() => 'UnknownNetworkException: $message';

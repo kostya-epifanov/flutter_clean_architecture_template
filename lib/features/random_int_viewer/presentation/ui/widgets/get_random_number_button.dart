@@ -37,11 +37,11 @@ class GetRandomNumberButton
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           child: const CircularProgressIndicator(strokeWidth: 3),
         ),
-      RequestStatus.success => Text(
+      RequestStatus.success || RequestStatus.failure => Text(
           '[${state.timerCounter}]',
           style: const TextStyle(color: Colors.white, fontSize: 12),
         ),
-      RequestStatus.initial || RequestStatus.failure => const SizedBox.shrink(),
+      RequestStatus.initial => const SizedBox.shrink(),
     };
   }
 }

@@ -9,21 +9,25 @@ class AppConfig {
   /// Current environment
   static Environment get environment => Environment.current;
 
-  /// Environment-specific configurations
-  static const Map<Environment, _EnvironmentConfig> _configs = {
-    Environment.development: _EnvironmentConfig(
+  /// Environment-specific configurations.
+  ///
+  /// random.org has no separate staging host, so staging uses the public API
+  /// too; in a real project it would point at the staging backend (or be
+  /// overridden with `--dart-define=API_BASE_URL=...`).
+  static _EnvironmentConfig get _currentConfig => switch (environment) {
+    Environment.development => const _EnvironmentConfig(
       apiBaseUrl: 'https://www.random.org',
       enableLogging: true,
       httpTimeout: Duration(seconds: 30),
       maxRetries: 3,
     ),
-    Environment.staging: _EnvironmentConfig(
-      apiBaseUrl: 'https://staging-api.random.org',
+    Environment.staging => const _EnvironmentConfig(
+      apiBaseUrl: 'https://www.random.org',
       enableLogging: true,
       httpTimeout: Duration(seconds: 30),
       maxRetries: 3,
     ),
-    Environment.production: _EnvironmentConfig(
+    Environment.production => const _EnvironmentConfig(
       apiBaseUrl: 'https://www.random.org',
       enableLogging: false,
       httpTimeout: Duration(seconds: 20),
@@ -31,9 +35,9 @@ class AppConfig {
     ),
   };
 
-  /// Get current environment configuration
-  static _EnvironmentConfig get _currentConfig =>
-      _configs[environment] ?? _configs[Environment.development]!;
+  static const String _apiBaseUrlOverride = String.fromEnvironment(
+    'API_BASE_URL',
+  );
 
   // ============================================================================
   // Public Configuration Accessors
@@ -41,12 +45,9 @@ class AppConfig {
 
   /// Base URL for API endpoints
   /// Can be overridden at compile time with `--dart-define=API_BASE_URL=<url>`
-  static String get apiBaseUrl => const String.fromEnvironment(
-        'API_BASE_URL',
-        defaultValue: '',
-      ).isEmpty
-          ? _currentConfig.apiBaseUrl
-          : const String.fromEnvironment('API_BASE_URL');
+  static String get apiBaseUrl => _apiBaseUrlOverride.isNotEmpty
+      ? _apiBaseUrlOverride
+      : _currentConfig.apiBaseUrl;
 
   /// Enable/disable debug logging
   static bool get enableLogging => const bool.hasEnvironment('ENABLE_LOGGING')

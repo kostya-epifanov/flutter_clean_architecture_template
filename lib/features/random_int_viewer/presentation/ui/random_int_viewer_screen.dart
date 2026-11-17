@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_clean_template/core/ui/injectable_state.dart';
+import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/ui/widgets/animated_counter_widget.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/ui/widgets/connectivity_label.dart';
@@ -14,6 +15,18 @@ class RandomIntViewerScreen extends StatefulWidget {
 
 class _RandomIntViewerScreenState
     extends InjectableState<RandomIntViewerScreen, RandomIntViewerCubit, RandomIntViewerState> {
+  @override
+  bool listenWhen(RandomIntViewerState previous, RandomIntViewerState current) =>
+      previous.requestStatus != current.requestStatus &&
+      current.requestStatus == RequestStatus.failure;
+
+  @override
+  void listener(BuildContext context, RandomIntViewerState state) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not get a new number. Will retry shortly.')),
+    );
+  }
+
   @override
   Widget builder(
     BuildContext context,
@@ -35,7 +48,7 @@ class _RandomIntViewerScreenState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ConnectivityLabel(state.connectivityState),
+                    ConnectivityLabel(state.networkStatus),
                     const GetRandomNumberButton(),
                   ],
                 ),
