@@ -28,10 +28,7 @@ class _RandomIntViewerScreenState
   }
 
   @override
-  Widget builder(
-    BuildContext context,
-    RandomIntViewerState state,
-  ) {
+  Widget builder(BuildContext context, RandomIntViewerState state) {
     return Scaffold(
       backgroundColor: const Color(0xFF333333),
       body: Stack(
@@ -47,10 +44,7 @@ class _RandomIntViewerScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ConnectivityLabel(state.networkStatus),
-                    const GetRandomNumberButton(),
-                  ],
+                  children: [ConnectivityLabel(state.networkStatus), const GetRandomNumberButton()],
                 ),
               ),
             ],
@@ -64,10 +58,7 @@ class _RandomIntViewerScreenState
     return AnimatedCounterWidget(
       target: state.number,
       duration: const Duration(milliseconds: 600),
-      textStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 96,
-      ),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 96),
     );
   }
 }

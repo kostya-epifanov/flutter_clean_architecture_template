@@ -8,20 +8,13 @@ class GetRandomNumberButton
   const GetRandomNumberButton({super.key});
 
   @override
-  Widget builder(
-    BuildContext context,
-    RandomIntViewerCubit cubit,
-    RandomIntViewerState state,
-  ) {
+  Widget builder(BuildContext context, RandomIntViewerCubit cubit, RandomIntViewerState state) {
     return TextButton(
       onPressed: cubit.onTapGetRandomNumber,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'GET RANDOM NUMBER',
-            style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
+          const Text('GET RANDOM NUMBER', style: TextStyle(color: Colors.white, fontSize: 12)),
           const SizedBox(width: 4),
           _buildStatusWidget(state),
         ],
@@ -32,15 +25,15 @@ class GetRandomNumberButton
   Widget _buildStatusWidget(RandomIntViewerState state) {
     return switch (state.requestStatus) {
       RequestStatus.loading => Container(
-          width: 23,
-          height: 16,
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-          child: const CircularProgressIndicator(strokeWidth: 3),
-        ),
+        width: 23,
+        height: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        child: const CircularProgressIndicator(strokeWidth: 3),
+      ),
       RequestStatus.success || RequestStatus.failure => Text(
-          '[${state.timerCounter}]',
-          style: const TextStyle(color: Colors.white, fontSize: 12),
-        ),
+        '[${state.timerCounter}]',
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
       RequestStatus.initial => const SizedBox.shrink(),
     };
   }

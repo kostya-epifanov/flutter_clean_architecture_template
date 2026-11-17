@@ -13,14 +13,10 @@ class HttpClient {
 
   /// [dio], [maxRetries] and [retryDelay] default to the app configuration
   /// and can be overridden in tests.
-  HttpClient(
-    HttpInterceptor interceptor, {
-    Dio? dio,
-    int? maxRetries,
-    Duration? retryDelay,
-  }) : _dio = dio ?? Dio(),
-       _maxRetries = maxRetries ?? AppConfig.maxRetries,
-       _retryDelay = retryDelay ?? AppConfig.retryDelay {
+  HttpClient(HttpInterceptor interceptor, {Dio? dio, int? maxRetries, Duration? retryDelay})
+    : _dio = dio ?? Dio(),
+      _maxRetries = maxRetries ?? AppConfig.maxRetries,
+      _retryDelay = retryDelay ?? AppConfig.retryDelay {
     _dio.options
       ..connectTimeout = AppConfig.httpTimeout
       ..receiveTimeout = AppConfig.httpTimeout
@@ -64,10 +60,7 @@ class HttpClient {
       try {
         return parser(response.data);
       } catch (e) {
-        throw ParseException(
-          message: 'Failed to parse response: $e',
-          originalError: e,
-        );
+        throw ParseException(message: 'Failed to parse response: $e', originalError: e);
       }
     }
   }

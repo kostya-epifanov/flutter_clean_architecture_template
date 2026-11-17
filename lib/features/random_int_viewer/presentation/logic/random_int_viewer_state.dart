@@ -31,10 +31,5 @@ class RandomIntViewerState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-        requestStatus,
-        networkStatus,
-        number,
-        timerCounter,
-      ];
+  List<Object?> get props => [requestStatus, networkStatus, number, timerCounter];
 }

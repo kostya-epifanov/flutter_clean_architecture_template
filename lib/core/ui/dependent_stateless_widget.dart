@@ -10,11 +10,7 @@ abstract class DependentStatelessWidget<G extends BlocBase<S>, S> extends Statel
 
   Widget builder(BuildContext context, G cubit, S state);
 
-  void listener(
-    BuildContext context,
-    G cubit,
-    S state,
-  ) {}
+  void listener(BuildContext context, G cubit, S state) {}
 
   @override
   Widget build(BuildContext context) {

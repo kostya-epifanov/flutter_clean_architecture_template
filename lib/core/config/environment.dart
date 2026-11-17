@@ -6,10 +6,7 @@ enum Environment {
 
   /// Get current environment from compile-time constant
   static Environment get current {
-    const env = String.fromEnvironment(
-      'ENVIRONMENT',
-      defaultValue: 'development',
-    );
+    const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
 
     return switch (env.toLowerCase()) {
       'production' || 'prod' => Environment.production,

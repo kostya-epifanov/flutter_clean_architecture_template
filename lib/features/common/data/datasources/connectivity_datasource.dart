@@ -15,8 +15,7 @@ class ConnectivityDataSource implements IConnectivityDataSource {
 
   @override
   Future<bool> isConnected() async {
-    return _toNetworkStatus(await _connectivity.checkConnectivity()) ==
-        NetworkStatus.connected;
+    return _toNetworkStatus(await _connectivity.checkConnectivity()) == NetworkStatus.connected;
   }
 
   @override

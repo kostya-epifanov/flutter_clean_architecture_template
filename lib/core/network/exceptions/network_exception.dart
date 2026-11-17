@@ -21,8 +21,7 @@ class NoInternetException extends NetworkException {
 
 /// Thrown when a request times out
 class RequestTimeoutException extends NetworkException {
-  const RequestTimeoutException()
-    : super('Request timed out. Please try again.');
+  const RequestTimeoutException() : super('Request timed out. Please try again.');
 
   @override
   String toString() => 'RequestTimeoutException: $message';
@@ -39,10 +38,8 @@ class ServerException extends NetworkException {
 
 /// Thrown when response data cannot be parsed
 class ParseException extends NetworkException {
-  const ParseException({
-    String message = 'Failed to parse response data',
-    dynamic originalError,
-  }) : super(message, originalError: originalError);
+  const ParseException({String message = 'Failed to parse response data', dynamic originalError})
+    : super(message, originalError: originalError);
 
   @override
   String toString() => 'ParseException: $message';
