@@ -13,7 +13,7 @@ class RandomIntViewerState extends Equatable {
     this.requestStatus = RequestStatus.initial,
     this.networkStatus,
     this.number = 0,
-    this.timerCounter = _timerDuration,
+    this.timerCounter = refreshIntervalSeconds,
   });
 
   RandomIntViewerState copyWith({
