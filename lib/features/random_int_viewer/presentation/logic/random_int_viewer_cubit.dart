@@ -1,111 +1,115 @@
 import 'dart:async';
 
+import 'package:clean_architecture_demo/core/result.dart';
+import 'package:clean_architecture_demo/core/ui/request_status.dart';
+import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
+import 'package:clean_architecture_demo/features/connectivity/domain/usecases/watch_network_status_usecase.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_clean_template/core/std/result.dart';
-import 'package:flutter_clean_template/core/ui/request_status.dart';
-import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
-import 'package:flutter_clean_template/features/common/domain/usecases/listen_connectivity_usecase.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 
 part 'random_int_viewer_state.dart';
 
-/// Seconds between automatic refreshes.
-const int refreshIntervalSeconds = 30;
-
-/// Loads a random number on start, then refreshes it every
-/// [refreshIntervalSeconds] seconds or when the user asks for it.
+/// Shows a random number and refreshes it every [refreshInterval] or on [refresh].
 ///
-/// The countdown stops while the app is in the background (see [pause] and
-/// [resume]): Android cuts network access for background apps, so refreshing
-/// there would only replace the number with a locally generated one.
+/// The countdown stops while the app is in the background ([pause], [resume]): Android cuts
+/// network access for background apps, so a refresh there would only produce a local number.
 class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
-  final GetRandomIntUseCase _getRandomIntUseCase;
+  static const defaultRefreshInterval = Duration(seconds: 30);
+
+  final WatchNetworkStatusUseCase _watchNetworkStatus;
+  final GetRandomIntUseCase _getRandomInt;
+  final Duration refreshInterval;
   final DateTime Function() _now;
 
-  late final StreamSubscription<NetworkStatus> _networkSubscription;
+  StreamSubscription<NetworkStatus>? _networkSubscription;
   Timer? _timer;
 
-  /// When the countdown was paused; `null` while it is running.
+  /// When the countdown was paused; `null` while it runs.
   DateTime? _pausedAt;
 
-  /// [now] defaults to [DateTime.now] and can be replaced in tests.
+  /// [now] is the clock used to measure pauses; tests replace it.
   RandomIntViewerCubit(
-    ListenConnectivityUseCase listenConnectivity,
-    this._getRandomIntUseCase, {
+    this._watchNetworkStatus,
+    this._getRandomInt, {
+    this.refreshInterval = defaultRefreshInterval,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now,
-       super(const RandomIntViewerState()) {
-    _networkSubscription = listenConnectivity().listen(
+       super(RandomIntViewerState(secondsToRefresh: refreshInterval.inSeconds));
+
+  /// Starts watching the network, the countdown and the first load. Call once.
+  void start() {
+    assert(_networkSubscription == null, 'start() called twice');
+    _networkSubscription = _watchNetworkStatus().listen(
       (status) => emit(state.copyWith(networkStatus: status)),
     );
     _startCountdown();
-    _loadRandomNumber();
+    _load();
   }
 
-  /// Fetches a new number now; ignored while a request is in flight.
-  void onTapGetRandomNumber() => _loadRandomNumber();
+  /// Loads a new number now; ignored while a request is in flight.
+  void refresh() => _load();
 
-  /// Stops the countdown, e.g. when the app goes to the background.
   void pause() {
     if (_pausedAt != null || isClosed) return;
     _pausedAt = _now();
     _timer?.cancel();
   }
 
-  /// Restarts the countdown after [pause], counting the time spent paused.
-  ///
-  /// If the next refresh fell due while paused, the number is loaded at once.
+  /// Continues the countdown minus the time spent paused, or loads at once if the refresh
+  /// fell due meanwhile.
   void resume() {
     final pausedAt = _pausedAt;
     if (pausedAt == null || isClosed) return;
     _pausedAt = null;
     _startCountdown();
 
-    if (state.requestStatus == RequestStatus.loading) return;
-    final secondsLeft = state.timerCounter - _now().difference(pausedAt).inSeconds;
+    if (state.status == RequestStatus.loading) return;
+    final secondsLeft = state.secondsToRefresh - _now().difference(pausedAt).inSeconds;
     if (secondsLeft > 0) {
-      emit(state.copyWith(timerCounter: secondsLeft));
+      emit(state.copyWith(secondsToRefresh: secondsLeft));
     } else {
-      _loadRandomNumber();
+      _load();
     }
   }
 
   void _startCountdown() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTimerTick());
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
-  void _onTimerTick() {
-    if (state.requestStatus == RequestStatus.loading) return;
+  void _onTick() {
+    if (state.status == RequestStatus.loading) return;
 
-    final secondsLeft = state.timerCounter - 1;
+    final secondsLeft = state.secondsToRefresh - 1;
     if (secondsLeft > 0) {
-      emit(state.copyWith(timerCounter: secondsLeft));
+      emit(state.copyWith(secondsToRefresh: secondsLeft));
     } else {
-      _loadRandomNumber();
+      _load();
     }
   }
 
-  Future<void> _loadRandomNumber() async {
-    if (state.requestStatus == RequestStatus.loading) return;
+  Future<void> _load() async {
+    if (state.status == RequestStatus.loading) return;
 
-    emit(state.copyWith(requestStatus: RequestStatus.loading));
-    final result = await _getRandomIntUseCase();
+    emit(state.copyWith(status: RequestStatus.loading));
+    final result = await _getRandomInt();
     if (isClosed) return;
-    // The new countdown starts now, so time spent paused counts from here.
+    // The new countdown starts now, so a pause that began during the request counts from here.
     if (_pausedAt != null) _pausedAt = _now();
 
-    // Whatever the outcome, the next automatic attempt is a full interval
-    // away, so a failing backend is not hammered every second.
+    // A full interval follows a failure too, so a failing server is not hit every second.
+    final secondsToRefresh = refreshInterval.inSeconds;
     emit(switch (result) {
       Success(:final value) => state.copyWith(
-        requestStatus: RequestStatus.success,
+        status: RequestStatus.success,
         number: value,
-        timerCounter: refreshIntervalSeconds,
+        secondsToRefresh: secondsToRefresh,
       ),
-      Failure() => state.copyWith(
-        requestStatus: RequestStatus.failure,
-        timerCounter: refreshIntervalSeconds,
+      Failure(:final error) => state.copyWith(
+        status: RequestStatus.failure,
+        failure: error,
+        secondsToRefresh: secondsToRefresh,
       ),
     });
   }
@@ -113,7 +117,7 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   @override
   Future<void> close() async {
     _timer?.cancel();
-    await _networkSubscription.cancel();
+    await _networkSubscription?.cancel();
     return super.close();
   }
 }

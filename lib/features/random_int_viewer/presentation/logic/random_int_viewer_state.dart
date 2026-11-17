@@ -1,35 +1,42 @@
 part of 'random_int_viewer_cubit.dart';
 
 class RandomIntViewerState extends Equatable {
-  final RequestStatus requestStatus;
+  final RequestStatus status;
+  final NetworkStatus networkStatus;
 
-  /// `null` until the first status arrives.
-  final NetworkStatus? networkStatus;
+  /// `null` until the first number is loaded.
+  final int? number;
 
-  final int number;
-  final int timerCounter;
+  final int secondsToRefresh;
+
+  /// Why the last request failed; set only while [status] is [RequestStatus.failure].
+  final RandomIntFailure? failure;
 
   const RandomIntViewerState({
-    this.requestStatus = RequestStatus.initial,
-    this.networkStatus,
-    this.number = 0,
-    this.timerCounter = refreshIntervalSeconds,
+    required this.secondsToRefresh,
+    this.status = RequestStatus.initial,
+    this.networkStatus = NetworkStatus.unknown,
+    this.number,
+    this.failure,
   });
 
   RandomIntViewerState copyWith({
-    RequestStatus? requestStatus,
+    RequestStatus? status,
     NetworkStatus? networkStatus,
     int? number,
-    int? timerCounter,
+    int? secondsToRefresh,
+    RandomIntFailure? failure,
   }) {
+    final newStatus = status ?? this.status;
     return RandomIntViewerState(
-      requestStatus: requestStatus ?? this.requestStatus,
+      status: newStatus,
       networkStatus: networkStatus ?? this.networkStatus,
       number: number ?? this.number,
-      timerCounter: timerCounter ?? this.timerCounter,
+      secondsToRefresh: secondsToRefresh ?? this.secondsToRefresh,
+      failure: newStatus == RequestStatus.failure ? failure ?? this.failure : null,
     );
   }
 
   @override
-  List<Object?> get props => [requestStatus, networkStatus, number, timerCounter];
+  List<Object?> get props => [status, networkStatus, number, secondsToRefresh, failure];
 }

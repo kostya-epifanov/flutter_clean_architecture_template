@@ -19,5 +19,5 @@ jobs:
 
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test
-      - run: flutter analyze
+      - run: flutter analyze --fatal-infos
       - run: flutter test --coverage

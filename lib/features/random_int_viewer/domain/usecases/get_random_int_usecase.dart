@@ -1,17 +1,11 @@
-import 'package:flutter_clean_template/core/std/result.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/domain/repositories/random_int_repository.dart';
+import 'package:clean_architecture_demo/core/result.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/repositories/random_int_repository.dart';
 
 class GetRandomIntUseCase {
-  final IRandomIntRepository _repository;
+  final RandomIntRepository _repository;
 
   const GetRandomIntUseCase(this._repository);
 
-  Future<Result<int>> call() async {
-    try {
-      final value = await _repository.getRandomInt();
-      return Success(value);
-    } on Exception catch (e, stackTrace) {
-      return Failure(e, stackTrace);
-    }
-  }
+  Future<Result<int, RandomIntFailure>> call() => _repository.getRandomInt();
 }

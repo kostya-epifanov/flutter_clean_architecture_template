@@ -1,18 +1,18 @@
-import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
+import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
 import 'package:material_ui/material_ui.dart';
 
 class ConnectivityLabel extends StatelessWidget {
-  /// `null` while the status has not been determined yet.
-  final NetworkStatus? networkStatus;
+  final NetworkStatus networkStatus;
 
   const ConnectivityLabel(this.networkStatus, {super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final (label, color) = switch (networkStatus) {
       NetworkStatus.connected => ('CONNECTED', Colors.green),
-      NetworkStatus.disconnected => ('DISCONNECTED', Colors.red),
-      null => ('CHECKING', Colors.grey),
+      NetworkStatus.disconnected => ('DISCONNECTED', colorScheme.error),
+      NetworkStatus.unknown => ('CHECKING', colorScheme.outline),
     };
 
     return Row(
@@ -28,7 +28,7 @@ class ConnectivityLabel extends StatelessWidget {
           child: Text(
             label,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white, fontSize: 12),
+            style: Theme.of(context).textTheme.labelMedium,
           ),
         ),
       ],

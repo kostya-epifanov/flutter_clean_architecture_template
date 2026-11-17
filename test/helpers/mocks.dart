@@ -1,25 +1,22 @@
+import 'package:clean_architecture_demo/features/connectivity/domain/repositories/connectivity_repository.dart';
+import 'package:clean_architecture_demo/features/connectivity/domain/usecases/watch_network_status_usecase.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/repositories/random_int_repository.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_clean_template/features/common/data/datasources/connectivity_datasource.dart';
-import 'package:flutter_clean_template/features/common/domain/repositories/connectivity_repository.dart';
-import 'package:flutter_clean_template/features/common/domain/usecases/listen_connectivity_usecase.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/domain/repositories/random_int_repository.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockConnectivity extends Mock implements Connectivity {}
 
-class MockConnectivityDataSource extends Mock implements IConnectivityDataSource {}
+class MockConnectivityRepository extends Mock implements ConnectivityRepository {}
 
-class MockConnectivityRepository extends Mock implements IConnectivityRepository {}
+class MockRandomIntLocalDataSource extends Mock implements RandomIntLocalDataSource {}
 
-class MockRandomIntLocalDataSource extends Mock implements IRandomIntLocalDataSource {}
+class MockRandomIntRemoteDataSource extends Mock implements RandomIntRemoteDataSource {}
 
-class MockRandomIntRemoteDataSource extends Mock implements IRandomIntRemoteDataSource {}
+class MockRandomIntRepository extends Mock implements RandomIntRepository {}
 
-class MockRandomIntRepository extends Mock implements IRandomIntRepository {}
-
-class MockListenConnectivityUseCase extends Mock implements ListenConnectivityUseCase {}
+class MockWatchNetworkStatusUseCase extends Mock implements WatchNetworkStatusUseCase {}
 
 class MockGetRandomIntUseCase extends Mock implements GetRandomIntUseCase {}

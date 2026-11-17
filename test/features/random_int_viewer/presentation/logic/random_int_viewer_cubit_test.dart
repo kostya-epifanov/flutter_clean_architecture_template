@@ -1,36 +1,39 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
+import 'package:clean_architecture_demo/core/result.dart';
+import 'package:clean_architecture_demo/core/ui/request_status.dart';
+import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 import 'package:fake_async/fake_async.dart';
-import 'package:flutter_clean_template/core/network/exceptions/network_exception.dart';
-import 'package:flutter_clean_template/core/std/result.dart';
-import 'package:flutter_clean_template/core/ui/request_status.dart';
-import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../helpers/mocks.dart';
 
-const _failure = Failure<int>(NoInternetException());
+const _failure = Failure<int, RandomIntFailure>(RandomIntFailure.serverError);
+final _interval = RandomIntViewerCubit.defaultRefreshInterval.inSeconds;
 
 void main() {
-  late MockListenConnectivityUseCase listenConnectivity;
+  late MockWatchNetworkStatusUseCase watchNetworkStatus;
   late MockGetRandomIntUseCase getRandomInt;
   late StreamController<NetworkStatus> networkStatus;
 
   setUp(() {
-    listenConnectivity = MockListenConnectivityUseCase();
+    watchNetworkStatus = MockWatchNetworkStatusUseCase();
     getRandomInt = MockGetRandomIntUseCase();
     networkStatus = StreamController<NetworkStatus>.broadcast();
-    when(() => listenConnectivity()).thenAnswer((_) => networkStatus.stream);
+    when(() => watchNetworkStatus()).thenAnswer((_) => networkStatus.stream);
   });
 
   tearDown(() => networkStatus.close());
 
-  RandomIntViewerCubit buildCubit() => RandomIntViewerCubit(listenConnectivity, getRandomInt);
+  /// A started cubit, as the screen gets it.
+  RandomIntViewerCubit buildCubit() =>
+      RandomIntViewerCubit(watchNetworkStatus, getRandomInt)..start();
 
-  void givenResults(List<Result<int>> results) {
+  void givenResults(List<Result<int, RandomIntFailure>> results) {
     final queue = List.of(results);
     when(() => getRandomInt())
         .thenAnswer((_) async => queue.length > 1 ? queue.removeAt(0) : queue.single);
@@ -40,48 +43,70 @@ void main() {
   ///
   /// Inside `fakeAsync`, call this within the fake zone: a completer delivers
   /// its result through the zone it was created in.
-  Completer<Result<int>> givenPendingRequest() {
-    final completer = Completer<Result<int>>();
+  Completer<Result<int, RandomIntFailure>> givenPendingRequest() {
+    final completer = Completer<Result<int, RandomIntFailure>>();
     when(() => getRandomInt()).thenAnswer((_) => completer.future);
     return completer;
   }
 
-  group('initial load', () {
-    // The constructor emits `loading` synchronously, before bloc_test subscribes,
-    // so the recorded states start with the outcome of the first request.
+  group('start', () {
+    test('does nothing until started', () {
+      final cubit = RandomIntViewerCubit(watchNetworkStatus, getRandomInt);
+      addTearDown(cubit.close);
+
+      expect(cubit.state, RandomIntViewerState(secondsToRefresh: _interval));
+      verifyNever(() => getRandomInt());
+      verifyNever(() => watchNetworkStatus());
+    });
+
     blocTest<RandomIntViewerCubit, RandomIntViewerState>(
-      'emits the number and a full countdown on success',
+      'loads the number and starts a full countdown',
       setUp: () => givenResults([const Success(42)]),
-      build: buildCubit,
-      expect: () => const [
+      build: () => RandomIntViewerCubit(watchNetworkStatus, getRandomInt),
+      act: (cubit) => cubit.start(),
+      expect: () => [
+        RandomIntViewerState(status: RequestStatus.loading, secondsToRefresh: _interval),
         RandomIntViewerState(
-          requestStatus: RequestStatus.success,
+          status: RequestStatus.success,
           number: 42,
-          timerCounter: refreshIntervalSeconds,
+          secondsToRefresh: _interval,
         ),
       ],
       verify: (_) => verify(() => getRandomInt()).called(1),
     );
 
     blocTest<RandomIntViewerCubit, RandomIntViewerState>(
-      'emits failure and keeps the previous number on error',
+      'reports the failure and keeps no number on error',
       setUp: () => givenResults([_failure]),
-      build: buildCubit,
-      expect: () => const [
+      build: () => RandomIntViewerCubit(watchNetworkStatus, getRandomInt),
+      act: (cubit) => cubit.start(),
+      expect: () => [
+        RandomIntViewerState(status: RequestStatus.loading, secondsToRefresh: _interval),
         RandomIntViewerState(
-          requestStatus: RequestStatus.failure,
-          timerCounter: refreshIntervalSeconds,
+          status: RequestStatus.failure,
+          failure: RandomIntFailure.serverError,
+          secondsToRefresh: _interval,
         ),
       ],
     );
+  });
 
-    test('starts in the loading state', () {
-      givenPendingRequest();
+  test('clears the failure once the next request starts', () {
+    givenResults([_failure, const Success(8)]);
 
+    fakeAsync((async) {
       final cubit = buildCubit();
-      addTearDown(cubit.close);
+      async.flushMicrotasks();
+      expect(cubit.state.failure, RandomIntFailure.serverError);
 
-      expect(cubit.state.requestStatus, RequestStatus.loading);
+      cubit.refresh();
+      expect(cubit.state.status, RequestStatus.loading);
+      expect(cubit.state.failure, isNull);
+
+      async.flushMicrotasks();
+      expect(cubit.state.number, 8);
+      expect(cubit.state.failure, isNull);
+      cubit.close();
     });
   });
 
@@ -94,14 +119,16 @@ void main() {
       await pumpEventQueue();
       networkStatus.add(NetworkStatus.disconnected);
     },
-    expect: () => const [
+    expect: () => [
       RandomIntViewerState(
-        requestStatus: RequestStatus.loading,
+        status: RequestStatus.loading,
         networkStatus: NetworkStatus.connected,
+        secondsToRefresh: _interval,
       ),
       RandomIntViewerState(
-        requestStatus: RequestStatus.loading,
+        status: RequestStatus.loading,
         networkStatus: NetworkStatus.disconnected,
+        secondsToRefresh: _interval,
       ),
     ],
   );
@@ -122,13 +149,13 @@ void main() {
       givenResults([const Success(5)]);
 
       runCubit((async, cubit) {
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.secondsToRefresh, _interval);
 
         async.elapse(const Duration(seconds: 1));
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 1);
+        expect(cubit.state.secondsToRefresh, _interval - 1);
 
         async.elapse(const Duration(seconds: 10));
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 11);
+        expect(cubit.state.secondsToRefresh, _interval - 11);
       });
     });
 
@@ -136,14 +163,14 @@ void main() {
       givenResults([const Success(5), const Success(77)]);
 
       runCubit((async, cubit) {
-        async.elapse(const Duration(seconds: refreshIntervalSeconds - 1));
-        expect(cubit.state.timerCounter, 1);
+        async.elapse(Duration(seconds: _interval - 1));
+        expect(cubit.state.secondsToRefresh, 1);
         verify(() => getRandomInt()).called(1);
 
         async.elapse(const Duration(seconds: 1));
         verify(() => getRandomInt()).called(1);
         expect(cubit.state.number, 77);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.secondsToRefresh, _interval);
       });
     });
 
@@ -151,16 +178,16 @@ void main() {
       givenResults([_failure]);
 
       runCubit((async, cubit) {
-        expect(cubit.state.requestStatus, RequestStatus.failure);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.status, RequestStatus.failure);
+        expect(cubit.state.secondsToRefresh, _interval);
 
-        async.elapse(const Duration(seconds: refreshIntervalSeconds - 1));
+        async.elapse(Duration(seconds: _interval - 1));
         verify(() => getRandomInt()).called(1);
 
         async.elapse(const Duration(seconds: 1));
         verify(() => getRandomInt()).called(1);
-        expect(cubit.state.requestStatus, RequestStatus.failure);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.status, RequestStatus.failure);
+        expect(cubit.state.secondsToRefresh, _interval);
       });
     });
 
@@ -171,19 +198,19 @@ void main() {
 
         async.elapse(const Duration(seconds: 5));
 
-        expect(cubit.state.requestStatus, RequestStatus.loading);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.status, RequestStatus.loading);
+        expect(cubit.state.secondsToRefresh, _interval);
 
         request.complete(const Success(3));
         async.flushMicrotasks();
         async.elapse(const Duration(seconds: 1));
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 1);
+        expect(cubit.state.secondsToRefresh, _interval - 1);
         cubit.close();
       });
     });
   });
 
-  group('onTapGetRandomNumber', () {
+  group('refresh', () {
     test('loads a new number immediately', () {
       givenResults([const Success(1), const Success(2)]);
 
@@ -191,7 +218,7 @@ void main() {
         final cubit = buildCubit();
         async.flushMicrotasks();
 
-        cubit.onTapGetRandomNumber();
+        cubit.refresh();
         async.flushMicrotasks();
 
         expect(cubit.state.number, 2);
@@ -206,8 +233,8 @@ void main() {
         final cubit = buildCubit();
 
         cubit
-          ..onTapGetRandomNumber()
-          ..onTapGetRandomNumber();
+          ..refresh()
+          ..refresh();
         async.flushMicrotasks();
         verify(() => getRandomInt()).called(1);
 
@@ -226,10 +253,10 @@ void main() {
     void runCubit(void Function(FakeAsync async, RandomIntViewerCubit cubit) body) {
       fakeAsync((async) {
         final cubit = RandomIntViewerCubit(
-          listenConnectivity,
+          watchNetworkStatus,
           getRandomInt,
           now: () => start.add(async.elapsed),
-        );
+        )..start();
         async.flushMicrotasks(); // settle the initial request
         body(async, cubit);
         cubit.close();
@@ -245,7 +272,7 @@ void main() {
         async.elapse(const Duration(minutes: 5));
 
         expect(async.periodicTimerCount, 0);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.secondsToRefresh, _interval);
         verify(() => getRandomInt()).called(1);
       });
     });
@@ -259,10 +286,10 @@ void main() {
         async.elapse(const Duration(seconds: 5));
         cubit.resume();
 
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 15);
+        expect(cubit.state.secondsToRefresh, _interval - 15);
         verify(() => getRandomInt()).called(1);
 
-        async.elapse(const Duration(seconds: refreshIntervalSeconds - 15));
+        async.elapse(Duration(seconds: _interval - 15));
         verify(() => getRandomInt()).called(1);
         expect(cubit.state.number, 6);
       });
@@ -273,13 +300,13 @@ void main() {
 
       runCubit((async, cubit) {
         cubit.pause();
-        async.elapse(const Duration(seconds: refreshIntervalSeconds + 15));
+        async.elapse(Duration(seconds: _interval + 15));
         cubit.resume();
         async.flushMicrotasks();
 
         verify(() => getRandomInt()).called(2);
         expect(cubit.state.number, 6);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds);
+        expect(cubit.state.secondsToRefresh, _interval);
       });
     });
 
@@ -287,10 +314,10 @@ void main() {
       fakeAsync((async) {
         final request = givenPendingRequest();
         final cubit = RandomIntViewerCubit(
-          listenConnectivity,
+          watchNetworkStatus,
           getRandomInt,
           now: () => start.add(async.elapsed),
-        );
+        )..start();
 
         cubit.pause();
         async.elapse(const Duration(seconds: 20));
@@ -300,7 +327,7 @@ void main() {
         cubit.resume();
 
         expect(cubit.state.number, 3);
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 5);
+        expect(cubit.state.secondsToRefresh, _interval - 5);
         verify(() => getRandomInt()).called(1);
         cubit.close();
         async.flushMicrotasks();
@@ -313,14 +340,14 @@ void main() {
       runCubit((async, cubit) {
         async.elapse(const Duration(seconds: 3));
         cubit.resume();
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 3);
+        expect(cubit.state.secondsToRefresh, _interval - 3);
         expect(async.periodicTimerCount, 1);
 
         cubit.pause();
         async.elapse(const Duration(seconds: 10));
         cubit.pause(); // must not move the pause start
         cubit.resume();
-        expect(cubit.state.timerCounter, refreshIntervalSeconds - 13);
+        expect(cubit.state.secondsToRefresh, _interval - 13);
         expect(async.periodicTimerCount, 1);
       });
     });
@@ -350,7 +377,7 @@ void main() {
 
       // An emit after close would throw a StateError and fail this test.
       expect(states, isEmpty);
-      expect(cubit.state.requestStatus, RequestStatus.loading);
+      expect(cubit.state.status, RequestStatus.loading);
     });
 
     test('stops the countdown timer and the network subscription', () {

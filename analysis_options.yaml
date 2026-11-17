@@ -1,9 +1,6 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
-  language:
-    strict-casts: true
-    strict-raw-types: true
   exclude:
     - build/**
     - android/**
@@ -12,6 +9,10 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
 
 formatter:
   page_width: 100
@@ -19,7 +20,10 @@ formatter:
 linter:
   rules:
     - always_declare_return_types
+    - always_use_package_imports
+    - avoid_dynamic_calls
     - directives_ordering
     - prefer_final_locals
     - prefer_single_quotes
     - unawaited_futures
+    - unnecessary_lambdas

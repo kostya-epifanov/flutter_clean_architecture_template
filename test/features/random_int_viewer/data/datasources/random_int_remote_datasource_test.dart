@@ -1,10 +1,8 @@
+import 'package:clean_architecture_demo/core/network/api_client.dart';
+import 'package:clean_architecture_demo/core/network/network_exception.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_clean_template/core/network/exceptions/network_exception.dart';
-import 'package:flutter_clean_template/core/network/http/http_client.dart';
-import 'package:flutter_clean_template/core/network/http/http_interceptor.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logger/logger.dart';
 
 import '../../../../helpers/fake_http_client_adapter.dart';
 
@@ -13,10 +11,11 @@ void main() {
 
   RandomIntRemoteDataSource buildDataSource(List<FakeResponder> responders) {
     adapter = FakeHttpClientAdapter(responders);
-    final client = HttpClient(
-      HttpInterceptor(Logger(level: Level.off)),
-      dio: Dio()..httpClientAdapter = adapter,
+    final client = ApiClient(
+      Dio(BaseOptions(baseUrl: 'https://api.test'))..httpClientAdapter = adapter,
       maxRetries: 0,
+      maxTimeoutRetries: 0,
+      retryDelay: Duration.zero,
     );
     return RandomIntRemoteDataSource(client);
   }

@@ -1,4 +1,4 @@
-name: flutter_clean_template
+name: clean_architecture_demo
 description: Flutter app demonstrating Clean Architecture with Cubit, GetIt and Dio.
 publish_to: 'none'
 version: 1.0.0+1
@@ -13,7 +13,6 @@ dependencies:
   equatable: ^3.0.0
   dio: ^5.11.1
   connectivity_plus: ^7.3.2
-  logger: ^2.8.0
 
   flutter:
     sdk: flutter

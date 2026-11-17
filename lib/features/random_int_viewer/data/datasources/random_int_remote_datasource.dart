@@ -1,24 +1,16 @@
-import 'package:flutter_clean_template/core/config/app_config.dart';
-import 'package:flutter_clean_template/core/network/http/http_client.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/domain/entities/random_int_range.dart';
+import 'package:clean_architecture_demo/core/network/api_client.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/entities/random_int_range.dart';
 
-abstract class IRandomIntRemoteDataSource {
-  Future<int> getRandomInt();
-}
+/// random.org plain-text integer API.
+class RandomIntRemoteDataSource {
+  final ApiClient _client;
 
-class RandomIntRemoteDataSource implements IRandomIntRemoteDataSource {
-  final HttpClient _httpClient;
+  const RandomIntRemoteDataSource(this._client);
 
-  const RandomIntRemoteDataSource(this._httpClient);
-
-  @override
-  Future<int> getRandomInt() async {
-    final url = '${AppConfig.apiBaseUrl}${AppConfig.randomIntEndpoint}';
-
-    return await _httpClient.execute<int>(
-      method: 'GET',
-      url: url,
-      parser: (data) => int.parse(data.toString().trim()),
+  /// Throws a `NetworkException` when the request fails.
+  Future<int> getRandomInt() {
+    return _client.get(
+      '/integers/',
       query: {
         'num': 1,
         'min': RandomIntRange.min,
@@ -27,6 +19,7 @@ class RandomIntRemoteDataSource implements IRandomIntRemoteDataSource {
         'base': 10,
         'format': 'plain',
       },
+      parser: (data) => int.parse('$data'.trim()),
     );
   }
 }

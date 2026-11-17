@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter_clean_template/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/domain/entities/random_int_range.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/entities/random_int_range.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// [Random] that always returns the smallest or the largest allowed value.
@@ -22,22 +22,22 @@ class _ExtremeRandom implements Random {
 
 void main() {
   group('RandomIntLocalDataSource', () {
-    test('lowest draw maps to RandomIntRange.min', () async {
+    test('lowest draw maps to RandomIntRange.min', () {
       final dataSource = RandomIntLocalDataSource(_ExtremeRandom(highest: false));
 
-      expect(await dataSource.getRandomInt(), RandomIntRange.min);
+      expect(dataSource.getRandomInt(), RandomIntRange.min);
     });
 
-    test('highest draw maps to RandomIntRange.max', () async {
+    test('highest draw maps to RandomIntRange.max', () {
       final dataSource = RandomIntLocalDataSource(_ExtremeRandom(highest: true));
 
-      expect(await dataSource.getRandomInt(), RandomIntRange.max);
+      expect(dataSource.getRandomInt(), RandomIntRange.max);
     });
 
-    test('always stays within 1..100 for a seeded generator', () async {
+    test('always stays within 1..100 for a seeded generator', () {
       final dataSource = RandomIntLocalDataSource(Random(1));
 
-      final values = [for (var i = 0; i < 1000; i++) await dataSource.getRandomInt()];
+      final values = [for (var i = 0; i < 1000; i++) dataSource.getRandomInt()];
 
       expect(values, everyElement(inInclusiveRange(1, 100)));
     });

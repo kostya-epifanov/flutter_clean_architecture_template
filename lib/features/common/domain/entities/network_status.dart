@@ -1,1 +1,0 @@
-enum NetworkStatus { connected, disconnected }

@@ -1,12 +1,13 @@
 import 'dart:async';
 
+import 'package:clean_architecture_demo/core/result.dart';
+import 'package:clean_architecture_demo/core/theme/app_theme.dart';
+import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/presentation/ui/random_int_viewer_screen.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_clean_template/core/di/locator.dart';
-import 'package:flutter_clean_template/core/network/exceptions/network_exception.dart';
-import 'package:flutter_clean_template/core/std/result.dart';
-import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
-import 'package:flutter_clean_template/features/random_int_viewer/presentation/ui/random_int_viewer_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
@@ -15,36 +16,40 @@ import '../../../../helpers/mocks.dart';
 
 /// Longer than the counter animation, so the final number is on screen.
 const _counterAnimation = Duration(milliseconds: 700);
-const _snackBarText = 'Could not get a new number. Will retry shortly.';
+const _failure = Failure<int, RandomIntFailure>(RandomIntFailure.timeout);
+const _failureText = 'The server is not responding. Will retry shortly.';
+final _interval = RandomIntViewerCubit.defaultRefreshInterval.inSeconds;
 
 void main() {
-  late MockListenConnectivityUseCase listenConnectivity;
+  late MockWatchNetworkStatusUseCase watchNetworkStatus;
   late MockGetRandomIntUseCase getRandomInt;
   late StreamController<NetworkStatus> networkStatus;
 
   setUp(() {
-    listenConnectivity = MockListenConnectivityUseCase();
+    watchNetworkStatus = MockWatchNetworkStatusUseCase();
     getRandomInt = MockGetRandomIntUseCase();
     networkStatus = StreamController<NetworkStatus>.broadcast();
-    when(() => listenConnectivity()).thenAnswer((_) => networkStatus.stream);
-
-    // The screen resolves its cubit from the service locator.
-    locator.registerFactory(() => RandomIntViewerCubit(listenConnectivity, getRandomInt));
+    when(() => watchNetworkStatus()).thenAnswer((_) => networkStatus.stream);
   });
 
-  tearDown(() async {
-    await locator.reset();
-    await networkStatus.close();
-  });
+  tearDown(() => networkStatus.close());
 
-  void givenResults(List<Result<int>> results) {
+  void givenResults(List<Result<int, RandomIntFailure>> results) {
     final queue = List.of(results);
     when(() => getRandomInt())
         .thenAnswer((_) async => queue.length > 1 ? queue.removeAt(0) : queue.single);
   }
 
   Future<void> pumpScreen(WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: RandomIntViewerScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: BlocProvider(
+          create: (_) => RandomIntViewerCubit(watchNetworkStatus, getRandomInt)..start(),
+          child: const RandomIntViewerScreen(),
+        ),
+      ),
+    );
   }
 
   /// Rebuilds with the latest state, then lets the counter finish animating.
@@ -53,6 +58,8 @@ void main() {
     await tester.pump(_counterAnimation);
   }
 
+  TextButton button(WidgetTester tester) => tester.widget<TextButton>(find.byType(TextButton));
+
   testWidgets('shows the loaded number and the refresh countdown', (tester) async {
     givenResults([const Success(42)]);
 
@@ -60,23 +67,29 @@ void main() {
     await settleNumber(tester);
 
     expect(find.text('42'), findsOneWidget);
-    expect(find.text('[$refreshIntervalSeconds]'), findsOneWidget);
+    expect(find.text('[$_interval]'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('[${refreshIntervalSeconds - 1}]'), findsOneWidget);
+    expect(find.text('[${_interval - 1}]'), findsOneWidget);
   });
 
-  testWidgets('shows a progress indicator while loading', (tester) async {
-    final request = Completer<Result<int>>();
+  testWidgets('shows a placeholder and a disabled button while the first number loads', (
+    tester,
+  ) async {
+    final request = Completer<Result<int, RandomIntFailure>>();
     when(() => getRandomInt()).thenAnswer((_) => request.future);
 
     await pumpScreen(tester);
 
+    expect(find.text('–'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(button(tester).onPressed, isNull);
 
     request.complete(const Success(5));
-    await tester.pump();
+    await settleNumber(tester);
+    expect(find.text('5'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(button(tester).onPressed, isNotNull);
   });
 
   testWidgets('connectivity label goes from CHECKING to the reported status', (tester) async {
@@ -109,15 +122,15 @@ void main() {
     expect(find.text('20'), findsOneWidget);
   });
 
-  testWidgets('shows a SnackBar when loading fails', (tester) async {
-    givenResults([const Failure(NoInternetException())]);
+  testWidgets('explains the failure in a SnackBar and keeps the placeholder', (tester) async {
+    givenResults([_failure]);
 
     await pumpScreen(tester);
     await tester.pump(); // deliver the failure
     await tester.pump(); // build the SnackBar
 
-    expect(find.text(_snackBarText), findsOneWidget);
-    expect(find.text('0'), findsOneWidget, reason: 'no number has been loaded yet');
+    expect(find.text(_failureText), findsOneWidget);
+    expect(find.text('–'), findsOneWidget, reason: 'no number has been loaded yet');
   });
 
   testWidgets('asks for light status bar icons on the dark background', (tester) async {
@@ -137,15 +150,15 @@ void main() {
     tester.binding
       ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
       ..handleAppLifecycleStateChanged(AppLifecycleState.hidden);
-    await tester.pump(const Duration(seconds: refreshIntervalSeconds + 5));
+    await tester.pump(Duration(seconds: _interval + 5));
     verify(() => getRandomInt()).called(1);
-    expect(find.text('[$refreshIntervalSeconds]'), findsOneWidget);
+    expect(find.text('[$_interval]'), findsOneWidget);
 
     tester.binding
       ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
       ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('[${refreshIntervalSeconds - 1}]'), findsOneWidget);
+    expect(find.text('[${_interval - 1}]'), findsOneWidget);
   });
 
   group('bottom bar', () {
@@ -171,7 +184,7 @@ void main() {
     });
 
     testWidgets('is not covered by the error SnackBar', (tester) async {
-      givenResults([const Failure(NoInternetException())]);
+      givenResults([_failure]);
 
       await pumpScreen(tester);
       await tester.pump(); // deliver the failure

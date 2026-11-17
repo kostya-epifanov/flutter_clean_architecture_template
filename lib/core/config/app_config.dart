@@ -1,109 +1,73 @@
-import 'package:flutter/foundation.dart';
+import 'package:clean_architecture_demo/core/config/environment.dart';
 
-import 'environment.dart';
-
-/// Application-wide configuration constants
+/// Settings that differ between environments. Built once in `main` and passed to the
+/// composition root, so nothing else reads compile-time constants.
 class AppConfig {
-  AppConfig._();
-
-  /// Current environment
-  static Environment get environment => Environment.current;
-
-  /// Environment-specific configurations.
-  ///
-  /// random.org has no separate staging host, so staging uses the public API
-  /// too; in a real project it would point at the staging backend (or be
-  /// overridden with `--dart-define=API_BASE_URL=...`).
-  static _EnvironmentConfig get _currentConfig => switch (environment) {
-    Environment.development => const _EnvironmentConfig(
-      apiBaseUrl: 'https://www.random.org',
-      enableLogging: true,
-      httpTimeout: Duration(seconds: 30),
-      maxRetries: 3,
-    ),
-    Environment.staging => const _EnvironmentConfig(
-      apiBaseUrl: 'https://www.random.org',
-      enableLogging: true,
-      httpTimeout: Duration(seconds: 30),
-      maxRetries: 3,
-    ),
-    Environment.production => const _EnvironmentConfig(
-      apiBaseUrl: 'https://www.random.org',
-      enableLogging: false,
-      httpTimeout: Duration(seconds: 20),
-      maxRetries: 2,
-    ),
-  };
-
-  static const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
-
-  // ============================================================================
-  // Public Configuration Accessors
-  // ============================================================================
-
-  /// Base URL for API endpoints
-  /// Can be overridden at compile time with `--dart-define=API_BASE_URL=<url>`
-  static String get apiBaseUrl =>
-      _apiBaseUrlOverride.isNotEmpty ? _apiBaseUrlOverride : _currentConfig.apiBaseUrl;
-
-  /// Enable/disable debug logging
-  static bool get enableLogging => const bool.hasEnvironment('ENABLE_LOGGING')
-      ? const bool.fromEnvironment('ENABLE_LOGGING')
-      : _currentConfig.enableLogging;
-
-  /// How long to wait for the server to send or receive data
-  static Duration get httpTimeout => _currentConfig.httpTimeout;
-
-  /// How long to wait for a connection to the server. Kept short so that a
-  /// network without internet access falls back to local data quickly.
-  static const Duration connectTimeout = Duration(seconds: 10);
-
-  /// Number of retry attempts for failed requests
-  static int get maxRetries => _currentConfig.maxRetries;
-
-  /// Retry attempts for send/receive timeouts, capped below [maxRetries]:
-  /// each attempt can take a full [httpTimeout], so retrying a slow server
-  /// as often as a 5xx would keep the user waiting for minutes.
-  static const int maxTimeoutRetries = 1;
-
-  /// Delay between retry attempts
-  static const Duration retryDelay = Duration(seconds: 2);
-
-  /// API endpoints
-  static const String randomIntEndpoint = '/integers/';
-
-  // ============================================================================
-  // Debug Information
-  // ============================================================================
-
-  /// Print current configuration (for debugging)
-  static void printConfig() {
-    if (!enableLogging) return;
-
-    debugPrint(
-      'App configuration: '
-      'environment=${environment.name}, '
-      'apiBaseUrl=$apiBaseUrl, '
-      'enableLogging=$enableLogging, '
-      'connectTimeout=${connectTimeout.inSeconds}s, '
-      'httpTimeout=${httpTimeout.inSeconds}s, '
-      'maxRetries=$maxRetries, '
-      'maxTimeoutRetries=$maxTimeoutRetries',
-    );
-  }
-}
-
-/// Internal class to hold environment-specific configuration
-class _EnvironmentConfig {
+  final Environment environment;
   final String apiBaseUrl;
   final bool enableLogging;
-  final Duration httpTimeout;
+
+  /// How long to wait for a connection. Kept short: an unreachable host falls back to a
+  /// local number, so waiting longer only delays the user.
+  final Duration connectTimeout;
+
+  /// How long a connected server may take to send or receive data.
+  final Duration requestTimeout;
+
+  /// Retries for 5xx responses.
   final int maxRetries;
 
-  const _EnvironmentConfig({
+  /// Retries for send/receive timeouts. Lower than [maxRetries] because every attempt can
+  /// take a full [requestTimeout].
+  final int maxTimeoutRetries;
+
+  /// Base delay between retries; the n-th retry waits n times as long.
+  final Duration retryDelay;
+
+  const AppConfig({
+    required this.environment,
     required this.apiBaseUrl,
     required this.enableLogging,
-    required this.httpTimeout,
+    required this.requestTimeout,
     required this.maxRetries,
+    this.connectTimeout = const Duration(seconds: 10),
+    this.maxTimeoutRetries = 1,
+    this.retryDelay = const Duration(seconds: 2),
   });
+
+  /// Defaults for [environment], with optional overrides.
+  factory AppConfig.forEnvironment(
+    Environment environment, {
+    String? apiBaseUrl,
+    bool? enableLogging,
+  }) {
+    final isProduction = environment == Environment.production;
+    return AppConfig(
+      environment: environment,
+      // random.org has no staging host; a real backend would have one per environment.
+      apiBaseUrl: apiBaseUrl ?? 'https://www.random.org',
+      enableLogging: enableLogging ?? !isProduction,
+      requestTimeout: Duration(seconds: isProduction ? 20 : 30),
+      maxRetries: isProduction ? 2 : 3,
+    );
+  }
+
+  /// Reads `--dart-define`s: `ENVIRONMENT` picks the defaults, `API_BASE_URL` and
+  /// `ENABLE_LOGGING` override them.
+  factory AppConfig.fromDartDefines() {
+    const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+    return AppConfig.forEnvironment(
+      Environment.parse(const String.fromEnvironment('ENVIRONMENT')),
+      apiBaseUrl: apiBaseUrl.isEmpty ? null : apiBaseUrl,
+      enableLogging: const bool.hasEnvironment('ENABLE_LOGGING')
+          ? const bool.fromEnvironment('ENABLE_LOGGING')
+          : null,
+    );
+  }
+
+  @override
+  String toString() =>
+      'AppConfig(${environment.name}, $apiBaseUrl, logging: $enableLogging, '
+      'connect: ${connectTimeout.inSeconds}s, request: ${requestTimeout.inSeconds}s, '
+      'retries: $maxRetries, timeout retries: $maxTimeoutRetries)';
 }

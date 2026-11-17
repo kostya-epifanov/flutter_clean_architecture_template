@@ -1,54 +1,69 @@
 # Flutter Clean Architecture Demo
 
-A small Flutter app built to show how I structure a production codebase: layered
-Clean Architecture, dependency injection, Cubit state management, typed error handling,
-environment configuration and a test suite that covers every layer.
+A small Flutter app I use to show how I structure a production codebase: layered Clean
+Architecture, a composition root with GetIt, Cubit, typed errors from transport to UI,
+per-environment configuration and tests for every layer.
 
-**What the app does.** It shows a random number from [random.org](https://www.random.org),
-refreshes it every 30 seconds (or on tap) and displays the live network status. When the
-device is offline or the API host cannot be reached, the number is generated locally, so the
-screen keeps working. The countdown pauses while the app is in the background.
+<img src="docs/screenshot.png" alt="The app showing a random number" width="280">
+
+The app shows a random number from [random.org](https://www.random.org), refreshes it every
+30 seconds or on tap, and shows the network status. When the API host cannot be reached, the
+number is generated on the device so the screen keeps working.
 
 ## Architecture
 
 ```
 presentation ──▶ domain ◀── data
  Cubit, widgets   use cases,     repository implementations,
-                  entities,      data sources, HTTP
-                  repository
-                  contracts
+                  entities,      data sources, ApiClient (Dio)
+                  failures,
+                  repository interfaces
 ```
 
-- **Domain** is plain Dart: use cases, entities (`NetworkStatus`, `RandomIntRange`) and
-  repository contracts (`IRandomIntRepository`, `IConnectivityRepository`). It imports
-  nothing from `data/` or `presentation/` and no third-party packages.
-- **Data** implements the contracts. `connectivity_plus` and Dio never leave this layer.
-- **Presentation** talks to the domain only through use cases.
-- **`core/di/locator.dart`** is the single composition root that wires everything with GetIt.
-
-Request flow when a number is loaded:
+- **Domain** is plain Dart. It defines what can go wrong (`RandomIntFailure`) and returns
+  `Result<int, RandomIntFailure>`, so no Dio or `connectivity_plus` type reaches the UI.
+- **Data** implements the domain interfaces. Data sources throw `NetworkException`s; the
+  repository decides what each one means: fall back to a local number or report a failure.
+- **Presentation** depends on use cases only. The screen gets its cubit from a `BlocProvider`
+  and knows nothing about GetIt.
+- **`lib/injection.dart`** is the composition root and the only file that sees concrete classes.
 
 ```
 RandomIntViewerScreen
   └─ RandomIntViewerCubit
-       └─ GetRandomIntUseCase ─────────────── returns Result<int>
-            └─ IRandomIntRepository
-                 ├─ online  → RandomIntRemoteDataSource → HttpClient (Dio)
-                 └─ offline → RandomIntLocalDataSource
+       └─ GetRandomIntUseCase
+            └─ RandomIntRepository ─────── Result<int, RandomIntFailure>
+                 ├─ host reachable   → RandomIntRemoteDataSource → ApiClient → Dio
+                 └─ host unreachable → RandomIntLocalDataSource
 ```
 
-### Key decisions
+### Decisions
 
 | Decision | Why |
 |---|---|
-| **Cubit** (flutter_bloc) | The screen has a couple of intents; events would add ceremony without value. |
-| **GetIt** + `InjectableState` | One place for wiring; the screen resolves its cubit and `BlocProvider` owns its lifecycle. |
-| **`Result<T>` sealed type** | Use cases never throw; the cubit handles `Success`/`Failure` with an exhaustive `switch`. |
-| **`HttpClient` wrapper over Dio** | Retries 5xx with linear backoff and a slow server (read timeout) only once, fails fast when the host is unreachable and maps `DioException` to typed `NetworkException`s. |
-| **Fallback only when the host is unreachable** | No network, DNS failure or connect timeout → local number. A server that answers with an error, garbage or too slowly is shown as an error instead of being masked. |
-| **Lifecycle-aware countdown** | Android cuts network access for background apps, so the cubit pauses while the app is hidden and catches up on return. |
-| **`NetworkStatus` domain entity** | Keeps `ConnectivityResult` out of domain/UI; the stream emits the current status first, then changes. |
-| **Compile-time environments** | `--dart-define` selects dev/staging/prod without flavors or extra files. |
+| **Cubit** | The screen has two intents (refresh, pause/resume); events would be ceremony. |
+| **`start()` instead of work in the constructor** | Creating a cubit has no side effects, so tests and DI can build it freely. |
+| **Domain failures, not exceptions** | `RandomIntFailure` is an enum the UI switches over exhaustively to pick a message. Programming errors are not caught and still crash loudly. |
+| **Fall back only when the host is unreachable** | No network, DNS failure or connect timeout gives a local number. A server that answers with an error, garbage or too slowly is reported instead of masked. |
+| **Retries in `ApiClient`** | 5xx is retried with linear backoff, a slow server only once, an unreachable host never. Only idempotent methods are retried. |
+| **Countdown pauses in the background** | Android cuts network access for background apps, so a refresh there would only produce a local number. |
+| **`AppConfig` is an object** | Built once from `--dart-define`s in `main` and passed to the composition root, so config is testable and nothing reads globals. |
+
+### Trade-offs
+
+- **Thin use cases.** `GetRandomIntUseCase` and `WatchNetworkStatusUseCase` only delegate.
+  I keep them so the presentation layer has one consistent entry point; in a codebase where
+  most use cases stay this thin I would let cubits call repositories directly.
+- **No interfaces for data sources.** They are internal to the data layer and mocktail mocks
+  concrete classes, so an interface would only add a file. Interfaces exist where the
+  dependency rule needs them: at the domain boundary.
+- **GetIt as a service locator** is used only in the composition root and in `App`. Widgets
+  and cubits receive their dependencies through constructors and `BlocProvider`.
+
+### What I would add next
+
+Routing (go_router) once there is a second screen, a local cache so the last number
+survives restarts, localization, and flavors if the environments needed different app ids.
 
 ## Getting started
 
@@ -56,74 +71,62 @@ Requirements: Flutter **3.50+** (Dart 3.14).
 
 ```bash
 flutter pub get
-flutter run            # development environment by default
+flutter run                                   # development
+flutter run --dart-define=ENVIRONMENT=staging # development | staging | production
 ```
 
-## Configuration
-
-The environment is chosen at compile time:
-
-```bash
-flutter run --dart-define=ENVIRONMENT=staging      # development | staging | production
-```
-
-| Environment | Logging | HTTP timeout | Retries (5xx) | Retries (timeout) |
+| Environment | Logging | Request timeout | Retries (5xx) | Retries (timeout) |
 |---|---|---|---|---|
-| development | on  | 30 s | 3 | 1 |
-| staging     | on  | 30 s | 3 | 1 |
-| production  | off | 20 s | 2 | 1 |
+| development, staging | on  | 30 s | 3 | 1 |
+| production           | off | 20 s | 2 | 1 |
 
-The connect timeout is 10 s in every environment and is never retried: the app falls back to
-a local number instead.
-
-random.org has no staging host, so every environment uses `https://www.random.org`; in a real
-project staging would point at its own backend. Individual values can be overridden:
+The connect timeout is 10 s everywhere and is never retried. random.org has no staging host,
+so every environment uses `https://www.random.org`. Single values can be overridden:
 
 ```bash
-flutter run \
-  --dart-define=API_BASE_URL=http://localhost:3000 \
-  --dart-define=ENABLE_LOGGING=true
+flutter run --dart-define=API_BASE_URL=http://localhost:3000 --dart-define=ENABLE_LOGGING=true
 ```
 
-`.vscode/launch.json` contains a launch configuration for each environment.
-All values live in [`lib/core/config/app_config.dart`](lib/core/config/app_config.dart).
+`.vscode/launch.json` has a launch configuration per environment.
 
 ## Testing
 
 ```bash
 flutter test
-flutter test --coverage    # writes coverage/lcov.info
 ```
 
-The suite runs in a few seconds, without network access, platform channels or wall-clock waits.
+The suite needs no network, platform channels or real waiting: time is faked with
+`fake_async` and HTTP is served by an in-memory Dio adapter.
 
-| Layer | What is covered | Tools |
-|---|---|---|
-| core | `Result`; `HttpClient` retries, backoff, error mapping, parsing | in-memory Dio `HttpClientAdapter`, `fake_async` |
-| data / domain | connectivity mapping and stream, repository online/offline choice, data sources, use cases | `mocktail` |
-| presentation | cubit countdown, auto-refresh, failure back-off, ignored taps while loading, pause/resume, close safety | `bloc_test`, `fake_async` |
-| widget | number, countdown, network label, tap to refresh, error SnackBar, background pause, safe area, large fonts, status bar style | `flutter_test`, GetIt with mocked use cases |
+| Layer | Covered |
+|---|---|
+| core | `ApiClient` retries, backoff, idempotency, error mapping; `AppConfig` per environment; `Result` |
+| data | connectivity mapping and stream; repository fallback and exception → failure mapping; data sources |
+| presentation | cubit countdown, refresh, failure back-off, pause/resume, close safety |
+| widgets | number and placeholder, countdown, network label, disabled button, failure SnackBar, background pause, safe area, large fonts, status bar |
+| DI | the whole graph resolves |
 
-Line coverage of `lib/` is about 78%; DI wiring and config variants are the main gaps.
+Line coverage of `lib/` is about 93%. CI runs `dart format`, `flutter analyze --fatal-infos` and the tests on every push.
 
 ## Project structure
 
 ```
 lib/
 ├── core/
-│   ├── config/        # environments and AppConfig
-│   ├── di/            # GetIt composition root
-│   ├── network/       # HttpClient (Dio), interceptor, NetworkException hierarchy
-│   ├── std/           # Result<T>
-│   └── ui/            # InjectableState, DependentStatelessWidget, RequestStatus
+│   ├── config/        # Environment, AppConfig
+│   ├── network/       # ApiClient, NetworkException
+│   ├── theme/
+│   ├── ui/            # RequestStatus
+│   └── result.dart
 ├── features/
-│   ├── common/                      # connectivity, shared by features
-│   │   ├── data/
-│   │   └── domain/   (entities, repositories, usecases)
+│   ├── connectivity/
+│   │   ├── data/      # ConnectivityRepositoryImpl (connectivity_plus)
+│   │   └── domain/    # NetworkStatus, ConnectivityRepository, WatchNetworkStatusUseCase
 │   └── random_int_viewer/
-│       ├── data/     (datasources, repositories)
-│       ├── domain/   (entities, repositories, usecases)
-│       └── presentation/ (logic: cubit + state, ui: screen + widgets)
+│       ├── data/      # remote and local data sources, repository implementation
+│       ├── domain/    # RandomIntRange, RandomIntFailure, repository, use case
+│       └── presentation/
+├── injection.dart     # composition root
 ├── app.dart
 └── main.dart
 test/                  # mirrors lib/

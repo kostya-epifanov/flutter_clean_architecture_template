@@ -1,16 +1,14 @@
+import 'dart:developer';
+
+import 'package:clean_architecture_demo/app.dart';
+import 'package:clean_architecture_demo/core/config/app_config.dart';
+import 'package:clean_architecture_demo/injection.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'app.dart';
-import 'core/config/app_config.dart';
-import 'core/di/locator.dart';
-
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  final config = AppConfig.fromDartDefines();
+  if (config.enableLogging) log('$config', name: 'config');
 
-  // Print configuration for debugging (only in dev/staging)
-  AppConfig.printConfig();
-
-  setupLocator();
-
+  configureDependencies(config);
   runApp(const App());
 }
