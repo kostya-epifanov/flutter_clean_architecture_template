@@ -35,14 +35,16 @@ void _setupServices() {
 void _setupDataSources() {
   locator.registerLazySingleton<IConnectivityDataSource>(() => ConnectivityDataSource(locator()));
   locator.registerLazySingleton<IRandomIntRemoteDataSource>(
-      () => RandomIntRemoteDataSource(locator()));
+    () => RandomIntRemoteDataSource(locator()),
+  );
   locator.registerLazySingleton<IRandomIntLocalDataSource>(() => RandomIntLocalDataSource());
 }
 
 void _setupRepositories() {
   locator.registerLazySingleton<IConnectivityRepository>(() => ConnectivityRepository(locator()));
   locator.registerLazySingleton<IRandomIntRepository>(
-      () => RandomIntRepository(locator(), locator(), locator()));
+    () => RandomIntRepository(locator(), locator(), locator()),
+  );
 }
 
 void _setupUseCases() {

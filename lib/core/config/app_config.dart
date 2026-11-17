@@ -35,9 +35,7 @@ class AppConfig {
     ),
   };
 
-  static const String _apiBaseUrlOverride = String.fromEnvironment(
-    'API_BASE_URL',
-  );
+  static const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
 
   // ============================================================================
   // Public Configuration Accessors
@@ -45,9 +43,8 @@ class AppConfig {
 
   /// Base URL for API endpoints
   /// Can be overridden at compile time with `--dart-define=API_BASE_URL=<url>`
-  static String get apiBaseUrl => _apiBaseUrlOverride.isNotEmpty
-      ? _apiBaseUrlOverride
-      : _currentConfig.apiBaseUrl;
+  static String get apiBaseUrl =>
+      _apiBaseUrlOverride.isNotEmpty ? _apiBaseUrlOverride : _currentConfig.apiBaseUrl;
 
   /// Enable/disable debug logging
   static bool get enableLogging => const bool.hasEnvironment('ENABLE_LOGGING')

@@ -21,10 +21,7 @@ class AnimatedCounterWidget extends StatelessWidget {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: target.toDouble()),
       duration: duration,
-      builder: (context, value, _) => Text(
-        value.round().toString(),
-        style: textStyle,
-      ),
+      builder: (context, value, _) => Text(value.round().toString(), style: textStyle),
     );
   }
 }

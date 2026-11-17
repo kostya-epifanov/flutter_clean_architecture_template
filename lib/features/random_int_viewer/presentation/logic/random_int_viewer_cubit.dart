@@ -21,10 +21,8 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   late final StreamSubscription<NetworkStatus> _networkSubscription;
   late final Timer _timer;
 
-  RandomIntViewerCubit(
-    ListenConnectivityUseCase listenConnectivity,
-    this._getRandomIntUseCase,
-  ) : super(const RandomIntViewerState()) {
+  RandomIntViewerCubit(ListenConnectivityUseCase listenConnectivity, this._getRandomIntUseCase)
+    : super(const RandomIntViewerState()) {
     _networkSubscription = listenConnectivity().listen(
       (status) => emit(state.copyWith(networkStatus: status)),
     );
@@ -57,14 +55,14 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
     // away, so a failing backend is not hammered every second.
     emit(switch (result) {
       Success(:final value) => state.copyWith(
-          requestStatus: RequestStatus.success,
-          number: value,
-          timerCounter: refreshIntervalSeconds,
-        ),
+        requestStatus: RequestStatus.success,
+        number: value,
+        timerCounter: refreshIntervalSeconds,
+      ),
       Failure() => state.copyWith(
-          requestStatus: RequestStatus.failure,
-          timerCounter: refreshIntervalSeconds,
-        ),
+        requestStatus: RequestStatus.failure,
+        timerCounter: refreshIntervalSeconds,
+      ),
     });
   }
 
