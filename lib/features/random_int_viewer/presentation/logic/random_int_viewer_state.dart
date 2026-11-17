@@ -2,35 +2,38 @@ part of 'random_int_viewer_cubit.dart';
 
 class RandomIntViewerState extends Equatable {
   final RequestStatus requestStatus;
-  final ConnectivityResult connectivityState;
+
+  /// `null` until the first status arrives.
+  final NetworkStatus? networkStatus;
+
   final int number;
   final int timerCounter;
 
   const RandomIntViewerState({
     this.requestStatus = RequestStatus.initial,
-    this.connectivityState = ConnectivityResult.none,
+    this.networkStatus,
     this.number = 0,
     this.timerCounter = _timerDuration,
   });
 
   RandomIntViewerState copyWith({
     RequestStatus? requestStatus,
-    ConnectivityResult? connectivityState,
+    NetworkStatus? networkStatus,
     int? number,
     int? timerCounter,
   }) {
     return RandomIntViewerState(
       requestStatus: requestStatus ?? this.requestStatus,
-      connectivityState: connectivityState ?? this.connectivityState,
+      networkStatus: networkStatus ?? this.networkStatus,
       number: number ?? this.number,
       timerCounter: timerCounter ?? this.timerCounter,
     );
   }
 
   @override
-  List<Object> get props => [
+  List<Object?> get props => [
         requestStatus,
-        connectivityState,
+        networkStatus,
         number,
         timerCounter,
       ];

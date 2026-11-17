@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/core/std/result.dart';
+import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
 import 'package:flutter_clean_template/features/common/domain/usecases/listen_connectivity_usecase.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 
@@ -25,7 +25,7 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
     this._getRandomIntUseCase,
   ) : super(const RandomIntViewerState()) {
     _subscriptions.add(_listenConnectivityUsecase()
-        .listen((event) => emit(state.copyWith(connectivityState: event))));
+        .listen((event) => emit(state.copyWith(networkStatus: event))));
 
     _loadRandomNumber();
 

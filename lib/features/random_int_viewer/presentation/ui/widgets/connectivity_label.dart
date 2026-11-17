@@ -1,17 +1,23 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_clean_template/core/extensions/connectivity_result.dart';
+import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
 
 class ConnectivityLabel extends StatelessWidget {
-  final ConnectivityResult connectivityResult;
+  /// `null` while the status has not been determined yet.
+  final NetworkStatus? networkStatus;
 
   const ConnectivityLabel(
-    this.connectivityResult, {
+    this.networkStatus, {
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    final (label, color) = switch (networkStatus) {
+      NetworkStatus.connected => ('CONNECTED', Colors.green),
+      NetworkStatus.disconnected => ('DISCONNECTED', Colors.red),
+      null => ('CHECKING', Colors.grey),
+    };
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -19,13 +25,13 @@ class ConnectivityLabel extends StatelessWidget {
           width: 12,
           height: 12,
           decoration: BoxDecoration(
-            color: connectivityResult.color,
+            color: color,
             shape: BoxShape.circle,
           ),
         ),
         const SizedBox(width: 8),
         Text(
-          connectivityResult.status,
+          label,
           style: const TextStyle(
             fontWeight: FontWeight.w500,
             color: Colors.white,

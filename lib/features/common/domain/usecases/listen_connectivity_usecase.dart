@@ -1,4 +1,4 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
 import 'package:flutter_clean_template/features/common/domain/repositories/connectivity_repository.dart';
 
 class ListenConnectivityUseCase {
@@ -6,7 +6,7 @@ class ListenConnectivityUseCase {
 
   const ListenConnectivityUseCase(this._connectivityRepository);
 
-  Stream<ConnectivityResult> call() {
-    return _connectivityRepository.connectivity$();
+  Stream<NetworkStatus> call() {
+    return _connectivityRepository.networkStatus$();
   }
 }

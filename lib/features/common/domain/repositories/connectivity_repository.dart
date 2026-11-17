@@ -1,5 +1,6 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
 
 abstract class IConnectivityRepository {
-  Stream<ConnectivityResult> connectivity$();
+  /// Emits the current status first, then every change.
+  Stream<NetworkStatus> networkStatus$();
 }

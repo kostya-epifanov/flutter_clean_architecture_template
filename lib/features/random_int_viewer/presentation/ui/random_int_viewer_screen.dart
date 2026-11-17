@@ -35,7 +35,7 @@ class _RandomIntViewerScreenState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ConnectivityLabel(state.connectivityState),
+                    ConnectivityLabel(state.networkStatus),
                     const GetRandomNumberButton(),
                   ],
                 ),
