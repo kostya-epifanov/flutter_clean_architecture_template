@@ -4,20 +4,38 @@ import 'package:flutter_clean_template/core/network/exceptions/network_exception
 
 import 'http_interceptor.dart';
 
+/// Thin wrapper over [Dio] that adds retries and maps transport errors
+/// to [NetworkException]s.
 class HttpClient {
-  final Dio _internalClient = Dio();
-  final HttpInterceptor _interceptor;
+  final Dio _dio;
+  final int _maxRetries;
+  final Duration _retryDelay;
 
-  HttpClient(this._interceptor) {
-    _internalClient.interceptors.add(_interceptor);
-
-    // Configure timeouts
-    _internalClient.options.connectTimeout = AppConfig.httpTimeout;
-    _internalClient.options.receiveTimeout = AppConfig.httpTimeout;
-    _internalClient.options.sendTimeout = AppConfig.httpTimeout;
+  /// [dio], [maxRetries] and [retryDelay] default to the app configuration
+  /// and can be overridden in tests.
+  HttpClient(
+    HttpInterceptor interceptor, {
+    Dio? dio,
+    int? maxRetries,
+    Duration? retryDelay,
+  }) : _dio = dio ?? Dio(),
+       _maxRetries = maxRetries ?? AppConfig.maxRetries,
+       _retryDelay = retryDelay ?? AppConfig.retryDelay {
+    _dio.options
+      ..connectTimeout = AppConfig.httpTimeout
+      ..receiveTimeout = AppConfig.httpTimeout
+      ..sendTimeout = AppConfig.httpTimeout
+      ..listFormat = ListFormat.csv;
+    if (AppConfig.enableLogging) {
+      _dio.interceptors.add(interceptor);
+    }
   }
 
-  /// Execute HTTP request with automatic retry logic and error handling
+  /// Performs the request and parses the body with [parser].
+  ///
+  /// Transient failures (timeouts, connection errors, 5xx) are retried up to
+  /// `maxRetries` times with a linearly growing delay, so the request is sent
+  /// at most `maxRetries + 1` times.
   Future<T> execute<T>({
     required String method,
     required String url,
@@ -25,64 +43,36 @@ class HttpClient {
     Map<String, dynamic>? query,
     Map<String, dynamic>? body,
     Map<String, dynamic>? headers,
-    int? maxRetries,
   }) async {
-    final retries = maxRetries ?? AppConfig.maxRetries;
-    int attempts = 0;
-
-    while (attempts < retries) {
+    for (var attempt = 0; ; attempt++) {
+      final Response<dynamic> response;
       try {
-        final response = await _internalClient.request(
-          _prepareUrl(
-            url: url,
-            query: query,
-          ),
-          options: Options(
-            method: method,
-            headers: headers,
-          ),
+        response = await _dio.request<dynamic>(
+          url,
+          queryParameters: query,
           data: body,
+          options: Options(method: method, headers: headers),
         );
-
-        // Parse and return the response
-        try {
-          return parser(response.data);
-        } catch (e) {
-          throw ParseException(
-            message: 'Failed to parse response: $e',
-            originalError: e,
-          );
-        }
       } on DioException catch (e) {
-        attempts++;
-
-        // Check if we should retry
-        final shouldRetry = _shouldRetry(e, attempts, retries);
-
-        if (!shouldRetry) {
-          throw _handleDioException(e);
+        if (attempt < _maxRetries && _isRetryable(e)) {
+          await Future<void>.delayed(_retryDelay * (attempt + 1));
+          continue;
         }
+        throw _mapDioException(e);
+      }
 
-        // Wait before retrying
-        if (attempts < retries) {
-          await Future.delayed(AppConfig.retryDelay * attempts);
-        }
+      try {
+        return parser(response.data);
+      } catch (e) {
+        throw ParseException(
+          message: 'Failed to parse response: $e',
+          originalError: e,
+        );
       }
     }
-
-    // This should never be reached, but just in case
-    throw const UnknownNetworkException(
-      message: 'Maximum retry attempts reached',
-    );
   }
 
-  /// Determine if the request should be retried
-  bool _shouldRetry(DioException error, int attempts, int maxRetries) {
-    if (attempts >= maxRetries) {
-      return false;
-    }
-
-    // Retry on timeout and connection errors
+  static bool _isRetryable(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -90,7 +80,6 @@ class HttpClient {
       case DioExceptionType.connectionError:
         return true;
       case DioExceptionType.badResponse:
-        // Retry on 5xx server errors
         final statusCode = error.response?.statusCode ?? 0;
         return statusCode >= 500 && statusCode < 600;
       case DioExceptionType.transformTimeout:
@@ -101,28 +90,24 @@ class HttpClient {
     }
   }
 
-  /// Convert DioException to our custom NetworkException
-  NetworkException _handleDioException(DioException error) {
+  static NetworkException _mapDioException(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.transformTimeout:
-        return const TimeoutException();
+        return const RequestTimeoutException();
 
       case DioExceptionType.connectionError:
         return const NoInternetException();
 
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode ?? 500;
-        final message = error.response?.data?.toString() ??
+        final message =
+            error.response?.data?.toString() ??
             error.response?.statusMessage ??
             'Server error occurred';
-        return ServerException(
-          statusCode,
-          message,
-          originalError: error,
-        );
+        return ServerException(statusCode, message, originalError: error);
 
       case DioExceptionType.cancel:
         return const CancelledException();
@@ -139,26 +124,5 @@ class HttpClient {
           originalError: error,
         );
     }
-  }
-
-  static String _prepareUrl({
-    required String url,
-    Map<String, dynamic>? query,
-  }) {
-    String result = url;
-    if (query != null && query.isNotEmpty) {
-      final List<dynamic> queries = [];
-      for (final entry in query.entries) {
-        final key = entry.key;
-        final value = entry.value;
-        if (value is Iterable) {
-          queries.add('$key=${value.join(',')}');
-        } else {
-          queries.add('$key=$value');
-        }
-      }
-      result += '?${queries.join('&')}';
-    }
-    return result;
   }
 }
