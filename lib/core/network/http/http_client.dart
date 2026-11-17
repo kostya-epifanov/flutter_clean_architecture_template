@@ -89,6 +89,8 @@ class HttpClient {
   static NetworkException _mapDioException(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
+        return const ConnectionTimeoutException();
+
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.transformTimeout:

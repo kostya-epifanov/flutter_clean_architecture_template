@@ -73,7 +73,7 @@ void main() {
       test('does not retry a connect timeout, so callers can fall back at once', () async {
         final client = buildClient([throwDio(DioExceptionType.connectionTimeout), respond('7')]);
 
-        await expectLater(getNumber(client), throwsA(isA<RequestTimeoutException>()));
+        await expectLater(getNumber(client), throwsA(isA<ConnectionTimeoutException>()));
         expect(adapter.requests, hasLength(1));
       });
 
@@ -144,8 +144,8 @@ void main() {
     group('maps DioException types to NetworkExceptions', () {
       final expectations = <DioExceptionType, (String, Matcher)>{
         DioExceptionType.connectionTimeout: (
-          'RequestTimeoutException',
-          isA<RequestTimeoutException>(),
+          'ConnectionTimeoutException',
+          isA<ConnectionTimeoutException>(),
         ),
         DioExceptionType.sendTimeout: ('RequestTimeoutException', isA<RequestTimeoutException>()),
         DioExceptionType.receiveTimeout: (

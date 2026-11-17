@@ -47,11 +47,19 @@ void main() {
       expect(await repository.getRandomInt(), 1);
     });
 
-    test('falls back to local when the API times out', () async {
+    test('falls back to local when connecting to the API times out', () async {
+      givenOnline(true);
+      when(() => remote.getRandomInt()).thenThrow(const ConnectionTimeoutException());
+
+      expect(await repository.getRandomInt(), 1);
+    });
+
+    test('propagates a slow server instead of masking it', () async {
       givenOnline(true);
       when(() => remote.getRandomInt()).thenThrow(const RequestTimeoutException());
 
-      expect(await repository.getRandomInt(), 1);
+      await expectLater(repository.getRandomInt(), throwsA(isA<RequestTimeoutException>()));
+      verifyNever(() => local.getRandomInt());
     });
 
     test('propagates server errors instead of masking them', () async {

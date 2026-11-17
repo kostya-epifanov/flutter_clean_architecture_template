@@ -9,7 +9,9 @@ import 'package:flutter_clean_template/features/random_int_viewer/domain/reposit
 ///
 /// Connectivity alone is not trusted: a device can report a network
 /// (Wi-Fi without internet, captive portal, VPN/bridge interfaces) and still
-/// fail to reach the API. Server and parsing errors are not masked.
+/// fail to reach the API. Only "cannot reach the host" falls back; a server
+/// that answers with an error, garbage or too slowly is reported as a failure
+/// rather than masked with a local number.
 class RandomIntRepository implements IRandomIntRepository {
   final IConnectivityDataSource _connectivityDataSource;
   final IRandomIntLocalDataSource _localDataSource;
@@ -30,7 +32,7 @@ class RandomIntRepository implements IRandomIntRepository {
       return await _remoteDataSource.getRandomInt();
     } on NoInternetException {
       return _localDataSource.getRandomInt();
-    } on RequestTimeoutException {
+    } on ConnectionTimeoutException {
       return _localDataSource.getRandomInt();
     }
   }
