@@ -12,17 +12,14 @@ import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 
 final GetIt locator = GetIt.instance;
-bool isLocatorInitialized = false;
 
-Future setupLocator() async {
-  await locator.reset();
+/// Registers all app dependencies. Must be called once before [runApp].
+void setupLocator() {
   _setupServices();
   _setupDataSources();
   _setupRepositories();
   _setupUseCases();
   _setupCubits();
-  isLocatorInitialized = true;
-  return isLocatorInitialized;
 }
 
 void _setupServices() {
