@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_clean_template/features/common/domain/entities/network_status.dart';
+import 'package:material_ui/material_ui.dart';
 
 class ConnectivityLabel extends StatelessWidget {
   /// `null` while the status has not been determined yet.

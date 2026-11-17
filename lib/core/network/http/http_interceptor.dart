@@ -15,7 +15,7 @@ class HttpInterceptor extends Interceptor {
   }
 
   @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
     _logger.d('HttpClient: <<< [${response.statusCode}] '
         '${response.requestOptions.method} ${response.requestOptions.uri}: '
         '${response.data}');

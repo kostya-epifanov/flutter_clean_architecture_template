@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 
 abstract class DependentStatelessWidget<G extends BlocBase<S>, S> extends StatelessWidget {
   const DependentStatelessWidget({super.key});

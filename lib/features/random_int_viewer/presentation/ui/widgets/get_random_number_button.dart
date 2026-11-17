@@ -1,7 +1,7 @@
-import 'package:material_ui/material_ui.dart';
-import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/core/ui/dependent_stateless_widget.dart';
+import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
+import 'package:material_ui/material_ui.dart';
 
 class GetRandomNumberButton
     extends DependentStatelessWidget<RandomIntViewerCubit, RandomIntViewerState> {

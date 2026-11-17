@@ -1,6 +1,6 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_clean_template/core/di/locator.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Base [State] that resolves its cubit from the service locator and
 /// provides it to the subtree, rebuilding on every state change.
