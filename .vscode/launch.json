@@ -6,60 +6,21 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "args": [
-        "--dart-define=ENVIRONMENT=development"
-      ]
-    },
-    {
-      "name": "Development (Custom API)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "args": [
-        "--dart-define=ENVIRONMENT=development",
-        "--dart-define=API_BASE_URL=http://localhost:3000"
-      ]
+      "args": ["--dart-define=ENVIRONMENT=development"]
     },
     {
       "name": "Staging",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "args": [
-        "--dart-define=ENVIRONMENT=staging"
-      ]
-    },
-    {
-      "name": "Staging (Custom API)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "args": [
-        "--dart-define=ENVIRONMENT=staging",
-        "--dart-define=API_BASE_URL=https://staging-api.example.com"
-      ]
+      "args": ["--dart-define=ENVIRONMENT=staging"]
     },
     {
       "name": "Production",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "args": [
-        "--dart-define=ENVIRONMENT=production",
-        "--dart-define=ENABLE_LOGGING=false"
-      ]
-    },
-    {
-      "name": "Production (Custom API)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "args": [
-        "--dart-define=ENVIRONMENT=production",
-        "--dart-define=API_BASE_URL=https://api.example.com",
-        "--dart-define=ENABLE_LOGGING=false"
-      ]
+      "args": ["--dart-define=ENVIRONMENT=production"]
     }
   ]
 }
-
