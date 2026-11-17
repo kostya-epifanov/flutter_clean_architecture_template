@@ -61,6 +61,11 @@ class AppConfig {
   /// Number of retry attempts for failed requests
   static int get maxRetries => _currentConfig.maxRetries;
 
+  /// Retry attempts for send/receive timeouts, capped below [maxRetries]:
+  /// each attempt can take a full [httpTimeout], so retrying a slow server
+  /// as often as a 5xx would keep the user waiting for minutes.
+  static const int maxTimeoutRetries = 1;
+
   /// Delay between retry attempts
   static const Duration retryDelay = Duration(seconds: 2);
 
@@ -82,7 +87,8 @@ class AppConfig {
       'enableLogging=$enableLogging, '
       'connectTimeout=${connectTimeout.inSeconds}s, '
       'httpTimeout=${httpTimeout.inSeconds}s, '
-      'maxRetries=$maxRetries',
+      'maxRetries=$maxRetries, '
+      'maxTimeoutRetries=$maxTimeoutRetries',
     );
   }
 }

@@ -16,6 +16,7 @@ void main() {
   HttpClient buildClient(
     List<FakeResponder> responders, {
     int maxRetries = 2,
+    int maxTimeoutRetries = 1,
     Duration retryDelay = Duration.zero,
   }) {
     adapter = FakeHttpClientAdapter(responders);
@@ -23,6 +24,7 @@ void main() {
       HttpInterceptor(Logger(level: Level.off)),
       dio: Dio()..httpClientAdapter = adapter,
       maxRetries: maxRetries,
+      maxTimeoutRetries: maxTimeoutRetries,
       retryDelay: retryDelay,
     );
   }
@@ -91,11 +93,31 @@ void main() {
         expect(adapter.requests, hasLength(2));
       });
 
-      test('gives up after maxRetries, sending maxRetries + 1 requests', () async {
-        final client = buildClient([throwDio(DioExceptionType.receiveTimeout)], maxRetries: 3);
+      test('gives up on a 5xx after maxRetries, sending maxRetries + 1 requests', () async {
+        final client = buildClient([respond('down', statusCode: 503)], maxRetries: 3);
+
+        await expectLater(getNumber(client), throwsA(isA<ServerException>()));
+        expect(adapter.requests, hasLength(4));
+      });
+
+      for (final type in [DioExceptionType.receiveTimeout, DioExceptionType.sendTimeout]) {
+        test('retries a ${type.name} only maxTimeoutRetries times', () async {
+          final client = buildClient([throwDio(type)], maxRetries: 3, maxTimeoutRetries: 1);
+
+          await expectLater(getNumber(client), throwsA(isA<RequestTimeoutException>()));
+          expect(adapter.requests, hasLength(2));
+        });
+      }
+
+      test('never retries a timeout more than maxRetries times', () async {
+        final client = buildClient(
+          [throwDio(DioExceptionType.receiveTimeout)],
+          maxRetries: 1,
+          maxTimeoutRetries: 5,
+        );
 
         await expectLater(getNumber(client), throwsA(isA<RequestTimeoutException>()));
-        expect(adapter.requests, hasLength(4));
+        expect(adapter.requests, hasLength(2));
       });
 
       test('does not retry a 4xx response', () async {
@@ -115,7 +137,7 @@ void main() {
       test('waits a linearly growing delay between attempts', () {
         fakeAsync((async) {
           final client = buildClient(
-            [throwDio(DioExceptionType.receiveTimeout)],
+            [respond('down', statusCode: 503)],
             maxRetries: 2,
             retryDelay: const Duration(seconds: 1),
           );
@@ -136,7 +158,7 @@ void main() {
 
           async.elapse(const Duration(milliseconds: 1));
           expect(adapter.requests, hasLength(3));
-          expect(error, isA<RequestTimeoutException>());
+          expect(error, isA<ServerException>());
         });
       });
     });

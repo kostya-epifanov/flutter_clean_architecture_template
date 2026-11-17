@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_clean_template/core/config/app_config.dart';
 import 'package:flutter_clean_template/core/network/exceptions/network_exception.dart';
@@ -9,14 +11,21 @@ import 'http_interceptor.dart';
 class HttpClient {
   final Dio _dio;
   final int _maxRetries;
+  final int _maxTimeoutRetries;
   final Duration _retryDelay;
 
-  /// [dio], [maxRetries] and [retryDelay] default to the app configuration
-  /// and can be overridden in tests.
-  HttpClient(HttpInterceptor interceptor, {Dio? dio, int? maxRetries, Duration? retryDelay})
-    : _dio = dio ?? Dio(),
-      _maxRetries = maxRetries ?? AppConfig.maxRetries,
-      _retryDelay = retryDelay ?? AppConfig.retryDelay {
+  /// [dio], [maxRetries], [maxTimeoutRetries] and [retryDelay] default to the
+  /// app configuration and can be overridden in tests.
+  HttpClient(
+    HttpInterceptor interceptor, {
+    Dio? dio,
+    int? maxRetries,
+    int? maxTimeoutRetries,
+    Duration? retryDelay,
+  }) : _dio = dio ?? Dio(),
+       _maxRetries = maxRetries ?? AppConfig.maxRetries,
+       _maxTimeoutRetries = maxTimeoutRetries ?? AppConfig.maxTimeoutRetries,
+       _retryDelay = retryDelay ?? AppConfig.retryDelay {
     _dio.options
       ..connectTimeout = AppConfig.connectTimeout
       ..receiveTimeout = AppConfig.httpTimeout
@@ -29,9 +38,9 @@ class HttpClient {
 
   /// Performs the request and parses the body with [parser].
   ///
-  /// Transient failures (send/receive timeouts and 5xx responses) are retried up to
-  /// `maxRetries` times with a linearly growing delay, so the request is sent
-  /// at most `maxRetries + 1` times.
+  /// Transient failures are retried with a linearly growing delay: 5xx
+  /// responses up to `maxRetries` times, send/receive timeouts up to
+  /// `maxTimeoutRetries` times (never more than `maxRetries`).
   Future<T> execute<T>({
     required String method,
     required String url,
@@ -50,7 +59,7 @@ class HttpClient {
           options: Options(method: method, headers: headers),
         );
       } on DioException catch (e) {
-        if (attempt < _maxRetries && _isRetryable(e)) {
+        if (attempt < _retryLimit(e)) {
           await Future<void>.delayed(_retryDelay * (attempt + 1));
           continue;
         }
@@ -65,14 +74,15 @@ class HttpClient {
     }
   }
 
-  static bool _isRetryable(DioException error) {
+  /// How many times a request failing with [error] may be retried.
+  int _retryLimit(DioException error) {
     switch (error.type) {
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return true;
+        return min(_maxTimeoutRetries, _maxRetries);
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode ?? 0;
-        return statusCode >= 500 && statusCode < 600;
+        return statusCode >= 500 && statusCode < 600 ? _maxRetries : 0;
       // The host could not be reached at all (no network, DNS failure,
       // connection refused, no answer within connectTimeout): retrying only
       // delays the caller's fallback.
@@ -82,7 +92,7 @@ class HttpClient {
       case DioExceptionType.cancel:
       case DioExceptionType.badCertificate:
       case DioExceptionType.unknown:
-        return false;
+        return 0;
     }
   }
 
