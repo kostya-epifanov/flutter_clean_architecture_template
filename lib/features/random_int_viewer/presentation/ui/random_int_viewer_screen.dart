@@ -31,25 +31,19 @@ class _RandomIntViewerScreenState
   Widget builder(BuildContext context, RandomIntViewerState state) {
     return Scaffold(
       backgroundColor: const Color(0xFF333333),
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              _buildNumberWidget(state),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [ConnectivityLabel(state.networkStatus), const GetRandomNumberButton()],
-                ),
-              ),
-            ],
+      body: Center(child: _buildNumberWidget(state)),
+      // In the bottom bar slot the row stays above the system gesture area
+      // (the app draws edge-to-edge on Android 15+), and SnackBars appear
+      // above it instead of covering the status and the button.
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [ConnectivityLabel(state.networkStatus), const GetRandomNumberButton()],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -118,4 +118,39 @@ void main() {
     expect(find.text(_snackBarText), findsOneWidget);
     expect(find.text('0'), findsOneWidget, reason: 'no number has been loaded yet');
   });
+
+  group('bottom bar', () {
+    const gestureInset = 48.0;
+
+    testWidgets('stays above the system gesture area', (tester) async {
+      tester.view.padding = const FakeViewPadding(bottom: gestureInset * 3); // physical px, dpr 3
+      tester.view.viewPadding = const FakeViewPadding(bottom: gestureInset * 3);
+      addTearDown(tester.view.reset);
+      givenResults([const Success(1)]);
+
+      await pumpScreen(tester);
+      await settleNumber(tester);
+
+      final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      for (final label in ['CHECKING', 'GET RANDOM NUMBER']) {
+        expect(
+          tester.getRect(find.text(label)).bottom,
+          lessThanOrEqualTo(screenHeight - gestureInset),
+          reason: '$label must not overlap the gesture area',
+        );
+      }
+    });
+
+    testWidgets('is not covered by the error SnackBar', (tester) async {
+      givenResults([const Failure(NoInternetException())]);
+
+      await pumpScreen(tester);
+      await tester.pump(); // deliver the failure
+      await tester.pumpAndSettle(); // finish the SnackBar entrance
+
+      final snackBar = tester.getRect(find.byType(SnackBar));
+      final button = tester.getRect(find.text('GET RANDOM NUMBER'));
+      expect(snackBar.overlaps(button), isFalse);
+    });
+  });
 }
