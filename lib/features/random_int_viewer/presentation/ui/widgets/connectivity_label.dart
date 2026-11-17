@@ -1,5 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_clean_template/core/extensions/connectivity_result.dart';
 
 class ConnectivityLabel extends StatelessWidget {
@@ -7,8 +7,8 @@ class ConnectivityLabel extends StatelessWidget {
 
   const ConnectivityLabel(
     this.connectivityResult, {
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {

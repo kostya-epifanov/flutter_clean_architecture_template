@@ -1,22 +1,23 @@
 name: flutter_clean_template
-description: flutter_clean_template
+description: Flutter app demonstrating Clean Architecture with Cubit, GetIt and Dio.
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ^3.14.0
+  flutter: '>=3.50.0'
 
 dependencies:
   flutter_bloc: ^9.1.1
-  get_it: ^9.2.0
-  equatable: ^2.0.7
-  dio: ^5.9.0
-  connectivity_plus: ^7.0.0
-  logger: ^2.6.2
+  get_it: ^9.3.0
+  equatable: ^3.0.0
+  dio: ^5.11.1
+  connectivity_plus: ^7.3.2
+  logger: ^2.8.0
 
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
@@ -25,7 +26,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-
-
-

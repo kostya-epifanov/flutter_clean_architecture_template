@@ -7,7 +7,7 @@ class RandomIntViewerState extends Equatable {
   final int timerCounter;
 
   const RandomIntViewerState({
-    this.requestStatus = const NotStarted(),
+    this.requestStatus = RequestStatus.initial,
     this.connectivityState = ConnectivityResult.none,
     this.number = 0,
     this.timerCounter = _timerDuration,

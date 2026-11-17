@@ -1,5 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 extension ConnectivityResultX on ConnectivityResult {
   String get status {
@@ -10,6 +10,7 @@ extension ConnectivityResultX on ConnectivityResult {
       case ConnectivityResult.bluetooth:
       case ConnectivityResult.ethernet:
       case ConnectivityResult.vpn:
+      case ConnectivityResult.satellite:
       case ConnectivityResult.other:
       case ConnectivityResult.none:
         return 'DISCONNECTED';
@@ -24,6 +25,7 @@ extension ConnectivityResultX on ConnectivityResult {
       case ConnectivityResult.bluetooth:
       case ConnectivityResult.ethernet:
       case ConnectivityResult.vpn:
+      case ConnectivityResult.satellite:
       case ConnectivityResult.other:
       case ConnectivityResult.none:
         return Colors.red;

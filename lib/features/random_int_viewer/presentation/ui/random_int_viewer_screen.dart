@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_clean_template/core/navigation/screen_transitions.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_clean_template/core/ui/injectable_state.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/ui/widgets/animated_counter_widget.dart';
@@ -7,14 +6,7 @@ import 'package:flutter_clean_template/features/random_int_viewer/presentation/u
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/ui/widgets/get_random_number_button.dart';
 
 class RandomIntViewerScreen extends StatefulWidget {
-  static const name = '/random_int_viewer_screen';
-
   const RandomIntViewerScreen({super.key});
-
-  static Route route() {
-    return ScreenTransitions.getTransition(ScreenTransitionType.fadeIn,
-        const RouteSettings(name: name), const RandomIntViewerScreen());
-  }
 
   @override
   State<RandomIntViewerScreen> createState() => _RandomIntViewerScreenState();

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'environment.dart';
 
 /// Application-wide configuration constants
@@ -38,7 +40,7 @@ class AppConfig {
   // ============================================================================
 
   /// Base URL for API endpoints
-  /// Can be overridden at compile time with --dart-define=API_BASE_URL=<url>
+  /// Can be overridden at compile time with `--dart-define=API_BASE_URL=<url>`
   static String get apiBaseUrl => const String.fromEnvironment(
         'API_BASE_URL',
         defaultValue: '',
@@ -71,15 +73,14 @@ class AppConfig {
   static void printConfig() {
     if (!enableLogging) return;
 
-    print('==========================================');
-    print('App Configuration');
-    print('==========================================');
-    print('Environment: ${environment.name}');
-    print('API Base URL: $apiBaseUrl');
-    print('Enable Logging: $enableLogging');
-    print('HTTP Timeout: ${httpTimeout.inSeconds}s');
-    print('Max Retries: $maxRetries');
-    print('==========================================');
+    debugPrint(
+      'App configuration: '
+      'environment=${environment.name}, '
+      'apiBaseUrl=$apiBaseUrl, '
+      'enableLogging=$enableLogging, '
+      'httpTimeout=${httpTimeout.inSeconds}s, '
+      'maxRetries=$maxRetries',
+    );
   }
 }
 

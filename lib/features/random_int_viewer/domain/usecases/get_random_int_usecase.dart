@@ -6,12 +6,12 @@ class GetRandomIntUseCase {
 
   GetRandomIntUseCase(this.repository);
 
-  Future<Result<int, Exception>> call() async {
+  Future<Result<int>> call() async {
     try {
       final value = await repository.getRandomInt();
       return Success(value);
-    } on Exception catch (e) {
-      return Error(e);
+    } on Exception catch (e, stackTrace) {
+      return Failure(e, stackTrace);
     }
   }
 }

@@ -1,6 +1,4 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter_clean_template/core/navigation/global_navigator.dart';
 import 'package:flutter_clean_template/core/network/http/http_client.dart';
 import 'package:flutter_clean_template/core/network/http/http_interceptor.dart';
 import 'package:flutter_clean_template/features/common/data/datasources/connectivity_datasource.dart';
@@ -14,18 +12,14 @@ import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 
 final GetIt locator = GetIt.instance;
-bool isLocatorInitialized = false;
 
-Future setupLocator(GlobalKey<NavigatorState> navigatorKey) async {
-  await locator.reset();
-  locator.registerSingleton(GlobalNavigator(navigatorKey: navigatorKey));
+/// Registers all app dependencies. Must be called once before [runApp].
+void setupLocator() {
   _setupServices();
   _setupDataSources();
   _setupRepositories();
   _setupUseCases();
   _setupCubits();
-  isLocatorInitialized = true;
-  return isLocatorInitialized;
 }
 
 void _setupServices() {

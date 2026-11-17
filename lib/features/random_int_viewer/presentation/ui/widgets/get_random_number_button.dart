@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_clean_template/core/network/http/request_status.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/core/ui/dependent_stateless_widget.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 
@@ -31,17 +31,17 @@ class GetRandomNumberButton
 
   Widget _buildStatusWidget(RandomIntViewerState state) {
     return switch (state.requestStatus) {
-      InProgress() => Container(
+      RequestStatus.loading => Container(
           width: 23,
           height: 16,
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           child: const CircularProgressIndicator(strokeWidth: 3),
         ),
-      Completed() => Text(
+      RequestStatus.success => Text(
           '[${state.timerCounter}]',
           style: const TextStyle(color: Colors.white, fontSize: 12),
         ),
-      NotStarted() || Failed() || Cancelled() => const SizedBox.shrink(),
+      RequestStatus.initial || RequestStatus.failure => const SizedBox.shrink(),
     };
   }
 }

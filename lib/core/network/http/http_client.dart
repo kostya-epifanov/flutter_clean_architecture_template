@@ -93,6 +93,7 @@ class HttpClient {
         // Retry on 5xx server errors
         final statusCode = error.response?.statusCode ?? 0;
         return statusCode >= 500 && statusCode < 600;
+      case DioExceptionType.transformTimeout:
       case DioExceptionType.cancel:
       case DioExceptionType.badCertificate:
       case DioExceptionType.unknown:
@@ -106,6 +107,7 @@ class HttpClient {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
         return const TimeoutException();
 
       case DioExceptionType.connectionError:
