@@ -1,5 +1,6 @@
 import 'package:flutter_clean_template/core/config/app_config.dart';
 import 'package:flutter_clean_template/core/network/http/http_client.dart';
+import 'package:flutter_clean_template/features/random_int_viewer/domain/entities/random_int_range.dart';
 
 abstract class IRandomIntRemoteDataSource {
   Future<int> getRandomInt();
@@ -20,8 +21,8 @@ class RandomIntRemoteDataSource implements IRandomIntRemoteDataSource {
       parser: (data) => int.parse(data.toString().trim()),
       query: {
         'num': 1,
-        'min': 1,
-        'max': 100,
+        'min': RandomIntRange.min,
+        'max': RandomIntRange.max,
         'col': 1,
         'base': 10,
         'format': 'plain',
