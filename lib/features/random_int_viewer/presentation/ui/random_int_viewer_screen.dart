@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_clean_template/core/ui/injectable_state.dart';
 import 'package:flutter_clean_template/core/ui/request_status.dart';
 import 'package:flutter_clean_template/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
@@ -29,6 +30,15 @@ class _RandomIntViewerScreenState
 
   @override
   Widget builder(BuildContext context, RandomIntViewerState state) {
+    // The screen has no AppBar to pick a status bar style, and the default
+    // dark icons are unreadable on the dark background.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: _buildScaffold(state),
+    );
+  }
+
+  Widget _buildScaffold(RandomIntViewerState state) {
     return Scaffold(
       backgroundColor: const Color(0xFF333333),
       body: Center(child: _buildNumberWidget(state)),

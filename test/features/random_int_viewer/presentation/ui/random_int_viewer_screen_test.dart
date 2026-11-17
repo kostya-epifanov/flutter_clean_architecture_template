@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_clean_template/core/di/locator.dart';
 import 'package:flutter_clean_template/core/network/exceptions/network_exception.dart';
 import 'package:flutter_clean_template/core/std/result.dart';
@@ -117,6 +118,15 @@ void main() {
 
     expect(find.text(_snackBarText), findsOneWidget);
     expect(find.text('0'), findsOneWidget, reason: 'no number has been loaded yet');
+  });
+
+  testWidgets('asks for light status bar icons on the dark background', (tester) async {
+    givenResults([const Success(1)]);
+
+    await pumpScreen(tester);
+    await tester.pump();
+
+    expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light);
   });
 
   group('bottom bar', () {
