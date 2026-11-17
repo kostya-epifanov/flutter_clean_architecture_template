@@ -1,245 +1,128 @@
-# Flutter Clean Architecture Template
+# Flutter Clean Architecture Demo
 
-A production-ready Flutter application template following Clean Architecture principles with
-comprehensive configuration management.
+A small Flutter app built to show how I structure a production codebase: layered
+Clean Architecture, dependency injection, Cubit state management, typed error handling,
+environment configuration and a test suite that covers every layer.
 
-## 🏗️ Architecture
+**What the app does.** It shows a random number from [random.org](https://www.random.org),
+refreshes it every 30 seconds (or on tap) and displays the live network status. When the
+device is offline the number is generated locally, so the screen keeps working.
 
-This project follows Clean Architecture with clear separation of concerns:
+## Architecture
 
-- **Presentation Layer** - UI components and state management (Cubit/Bloc)
-- **Domain Layer** - Business logic and use cases
-- **Data Layer** - Data sources and repositories
-
-## ✨ Features
-
-- ✅ Clean Architecture structure
-- ✅ Environment-specific configurations (Dev/Staging/Prod)
-- ✅ Centralized API configuration
-- ✅ HTTP client with retry logic
-- ✅ Proper error handling
-- ✅ Dependency injection with GetIt
-- ✅ State management with flutter_bloc
-- ✅ Network connectivity detection
-- ✅ Comprehensive logging
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Flutter SDK (>=3.0.0)
-- Dart SDK (>=3.0.0)
-
-### Installation
-
-1. Clone the repository
-
-```bash
-git clone https://github.com/kostya-epifanov/flutter_clean_architecture_template.git
-cd flutter_clean_architecture_template
+```
+presentation ──▶ domain ◀── data
+ Cubit, widgets   use cases,     repository implementations,
+                  entities,      data sources, HTTP
+                  repository
+                  contracts
 ```
 
-2. Install dependencies
+- **Domain** is plain Dart: use cases, entities (`NetworkStatus`, `RandomIntRange`) and
+  repository contracts (`IRandomIntRepository`, `IConnectivityRepository`). It imports
+  nothing from `data/` or `presentation/` and no third-party packages.
+- **Data** implements the contracts. `connectivity_plus` and Dio never leave this layer.
+- **Presentation** talks to the domain only through use cases.
+- **`core/di/locator.dart`** is the single composition root that wires everything with GetIt.
+
+Request flow when a number is loaded:
+
+```
+RandomIntViewerScreen
+  └─ RandomIntViewerCubit
+       └─ GetRandomIntUseCase ─────────────── returns Result<int>
+            └─ IRandomIntRepository
+                 ├─ online  → RandomIntRemoteDataSource → HttpClient (Dio)
+                 └─ offline → RandomIntLocalDataSource
+```
+
+### Key decisions
+
+| Decision | Why |
+|---|---|
+| **Cubit** (flutter_bloc) | The screen has a couple of intents; events would add ceremony without value. |
+| **GetIt** + `InjectableState` | One place for wiring; the screen resolves its cubit and `BlocProvider` owns its lifecycle. |
+| **`Result<T>` sealed type** | Use cases never throw; the cubit handles `Success`/`Failure` with an exhaustive `switch`. |
+| **`HttpClient` wrapper over Dio** | Retries transient failures (timeouts, connection errors, 5xx) with linear backoff and maps `DioException` to typed `NetworkException`s. |
+| **`NetworkStatus` domain entity** | Keeps `ConnectivityResult` out of domain/UI; the stream emits the current status first, then changes. |
+| **Compile-time environments** | `--dart-define` selects dev/staging/prod without flavors or extra files. |
+
+## Getting started
+
+Requirements: Flutter **3.50+** (Dart 3.14).
 
 ```bash
 flutter pub get
+flutter run            # development environment by default
 ```
 
-3. Run the app
+## Configuration
+
+The environment is chosen at compile time:
 
 ```bash
-flutter run
+flutter run --dart-define=ENVIRONMENT=staging      # development | staging | production
 ```
 
-## 🔧 Configuration Management
+| Environment | Logging | HTTP timeout | Retries |
+|---|---|---|---|
+| development | on  | 30 s | 3 |
+| staging     | on  | 30 s | 3 |
+| production  | off | 20 s | 2 |
 
-This template includes a robust configuration management system supporting multiple environments.
-
-### Quick Start
-
-#### Run in Development
-
-```bash
-./scripts/run_dev.sh
-# or
-flutter run --dart-define=ENVIRONMENT=development
-```
-
-#### Run in Staging
-
-```bash
-./scripts/run_staging.sh
-# or
-flutter run --dart-define=ENVIRONMENT=staging
-```
-
-#### Run in Production
-
-```bash
-./scripts/run_prod.sh
-# or
-flutter run --dart-define=ENVIRONMENT=production --dart-define=ENABLE_LOGGING=false
-```
-
-### Using VS Code/Cursor
-
-Press `F5` and select from pre-configured launch options:
-
-- Development
-- Development (Custom API)
-- Staging
-- Staging (Custom API)
-- Production
-- Production (Custom API)
-
-### Environment Configurations
-
-| Environment | API Base URL                   | Logging | Timeout | Max Retries |
-|-------------|--------------------------------|---------|---------|-------------|
-| Development | https://www.random.org         | ✅       | 30s     | 3           |
-| Staging     | https://staging-api.random.org | ✅       | 30s     | 3           |
-| Production  | https://www.random.org         | ❌       | 20s     | 2           |
-
-### Custom Configuration
-
-Override settings at runtime:
+random.org has no staging host, so every environment uses `https://www.random.org`; in a real
+project staging would point at its own backend. Individual values can be overridden:
 
 ```bash
 flutter run \
-  --dart-define=ENVIRONMENT=staging \
-  --dart-define=API_BASE_URL=https://my-api.com \
+  --dart-define=API_BASE_URL=http://localhost:3000 \
   --dart-define=ENABLE_LOGGING=true
 ```
 
-📖 **Full Documentation**: See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for comprehensive
-configuration guide.
+`.vscode/launch.json` contains a launch configuration for each environment.
+All values live in [`lib/core/config/app_config.dart`](lib/core/config/app_config.dart).
 
-## 📁 Project Structure
+## Testing
+
+```bash
+flutter test
+flutter test --coverage    # writes coverage/lcov.info
+```
+
+62 tests run in a few seconds, without network access, platform channels or wall-clock waits.
+
+| Layer | What is covered | Tools |
+|---|---|---|
+| core | `Result`; `HttpClient` retries, backoff, error mapping, parsing | in-memory Dio `HttpClientAdapter`, `fake_async` |
+| data / domain | connectivity mapping and stream, repository online/offline choice, data sources, use cases | `mocktail` |
+| presentation | cubit countdown, auto-refresh, failure back-off, ignored taps while loading, close safety | `bloc_test`, `fake_async` |
+| widget | number, countdown, network label, tap to refresh, error SnackBar | `flutter_test`, GetIt with mocked use cases |
+
+Line coverage of `lib/` is about 78%; DI wiring and config variants are the main gaps.
+
+## Project structure
 
 ```
 lib/
 ├── core/
-│   ├── config/          # Application configuration
-│   │   ├── environment.dart
-│   │   └── app_config.dart
-│   ├── di/              # Dependency injection
-│   ├── extensions/      # Dart extensions
-│   ├── navigation/      # Navigation setup
-│   ├── network/         # HTTP client & error handling
-│   ├── std/             # Standard utilities
-│   └── ui/              # Common UI components
+│   ├── config/        # environments and AppConfig
+│   ├── di/            # GetIt composition root
+│   ├── network/       # HttpClient (Dio), interceptor, NetworkException hierarchy
+│   ├── std/           # Result<T>
+│   └── ui/            # InjectableState, DependentStatelessWidget, RequestStatus
 ├── features/
-│   ├── common/          # Shared feature components
-│   └── [feature_name]/
-│       ├── data/        # Data sources & repositories
-│       ├── domain/      # Use cases & entities
-│       └── presentation/# UI & state management
+│   ├── common/                      # connectivity, shared by features
+│   │   ├── data/
+│   │   └── domain/   (entities, repositories, usecases)
+│   └── random_int_viewer/
+│       ├── data/     (datasources, repositories)
+│       ├── domain/   (entities, repositories, usecases)
+│       └── presentation/ (logic: cubit + state, ui: screen + widgets)
 ├── app.dart
 └── main.dart
+test/                  # mirrors lib/
 ```
 
-## 🛠️ Development
+## License
 
-### Adding a New Feature
-
-1. Create feature folder structure:
-
-```
-lib/features/my_feature/
-├── data/
-│   ├── datasources/
-│   └── repositories/
-├── domain/
-│   └── usecases/
-└── presentation/
-    ├── logic/
-    └── ui/
-```
-
-2. Implement following Clean Architecture principles
-3. Register dependencies in `lib/core/di/service_locator.dart`
-
-### Using Configuration
-
-Always use `AppConfig` for configuration values:
-
-```dart
-import 'package:flutter_clean_template/core/config/app_config.dart';
-
-// Get API URL
-final url = '${AppConfig.apiBaseUrl}/api/endpoint';
-
-// Check environment
-if (
-AppConfig.environment.isDevelopment) {
-// Development-specific code
-}
-
-// Access other configs
-final timeout = AppConfig.httpTimeout;
-final logging = AppConfig
-.
-enableLogging;
-```
-
-### HTTP Requests
-
-Use the `HttpClient` wrapper for all network requests:
-
-```dart
-
-final result = await
-_httpClient.execute<MyModel>
-(
-method: 'GET',
-url: '${AppConfig.apiBaseUrl}/endpoint',
-parser: (data) => MyModel.fromJson(data),
-query: {'param': 'value'},
-);
-```
-
-## 🧪 Testing
-
-```bash
-flutter test
-```
-
-## 📦 Building
-
-### Development Build
-
-```bash
-flutter build apk --dart-define=ENVIRONMENT=development
-```
-
-### Production Build
-
-```bash
-./scripts/build_prod.sh
-# or
-flutter build apk --release \
-  --dart-define=ENVIRONMENT=production \
-  --dart-define=ENABLE_LOGGING=false
-```
-
-## 📚 Documentation
-
-- [Configuration Guide](docs/CONFIGURATION.md) - Comprehensive configuration management
-  documentation
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- Clean Architecture by Robert C. Martin
-- Flutter community
+[MIT](LICENSE)
