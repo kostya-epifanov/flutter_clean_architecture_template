@@ -90,16 +90,19 @@ class _Number extends StatelessWidget {
                 style: style,
               ),
             ),
-          // Keeps its space while hidden, so the number does not jump when it appears.
+          // Keeps its space while hidden, so the number does not jump when it appears. The
+          // number's own label already tells screen readers where it came from.
           Visibility(
             visible: number?.isFromDevice ?? false,
             maintainSize: true,
             maintainAnimation: true,
             maintainState: true,
-            child: Text(
-              'Offline: generated on the device',
-              textAlign: TextAlign.center,
-              style: textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
+            child: ExcludeSemantics(
+              child: Text(
+                'Offline: generated on the device',
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
+              ),
             ),
           ),
         ],

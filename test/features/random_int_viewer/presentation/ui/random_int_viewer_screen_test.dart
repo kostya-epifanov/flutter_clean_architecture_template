@@ -142,6 +142,12 @@ void main() {
         tester.getSemantics(find.bySemanticsLabel('42, generated on the device')),
         isSemantics(label: '42, generated on the device', isLiveRegion: true),
       );
+      await tester.pump(_counterAnimation);
+      expect(
+        find.bySemanticsLabel(RegExp('Offline')),
+        findsNothing,
+        reason: 'the caption would repeat what the number already says',
+      );
       semantics.dispose();
     });
 
