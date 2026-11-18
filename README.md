@@ -2,7 +2,8 @@
 
 A small Flutter app I use to show how I structure a production codebase: layered Clean
 Architecture, a composition root with GetIt, Cubit, typed errors from transport to UI,
-per-environment configuration and tests for every layer.
+per-environment configuration and unit and widget tests from the network client up to the
+screen.
 
 <img src="docs/screenshot.png" alt="The app showing a random number" width="280">
 
@@ -68,7 +69,7 @@ survives restarts, localization, and flavors if the environments needed differen
 
 ## Getting started
 
-Requirements: Flutter **3.50+** (Dart 3.14).
+Requirements: Flutter **3.50+** (Dart 3.14). Targets Android and iOS.
 
 ```bash
 flutter pub get
@@ -93,6 +94,20 @@ flutter run --dart-define=API_BASE_URL=http://localhost:3000 --dart-define=ENABL
 
 `.vscode/launch.json` has a launch configuration per environment.
 
+### Release signing
+
+Release builds read their signing key from `android/key.properties`, which git ignores:
+
+```properties
+storeFile=/path/to/upload-keystore.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+Without that file the release build is signed with the debug key. It installs and runs, which
+is enough for CI and demos, but it cannot be published to Google Play.
+
 ## Testing
 
 ```bash
@@ -110,7 +125,12 @@ The suite needs no network, platform channels or real waiting: time is faked wit
 | widgets | number and placeholder, offline caption, countdown, network label, disabled button, failure SnackBar, background pause, safe area, large fonts, status bar, screen reader labels |
 | DI | the whole graph resolves |
 
-Line coverage of `lib/` is about 93%. CI runs `dart format`, `flutter analyze --fatal-infos` and the tests on every push.
+CI runs on pushes to `master` and on pull requests:
+
+- `dart format` and `flutter analyze --fatal-infos`;
+- the tests, failing if line coverage of `lib/` drops below 90% (it is 93% now; the run
+  summary shows the figure and `lcov.info` is kept as a build artifact);
+- a release APK build.
 
 ## Project structure
 
