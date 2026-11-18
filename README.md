@@ -8,7 +8,7 @@ per-environment configuration and tests for every layer.
 
 The app shows a random number from [random.org](https://www.random.org), refreshes it every
 30 seconds or on tap, and shows the network status. When the API host cannot be reached, the
-number is generated on the device so the screen keeps working.
+number is generated on the device so the screen keeps working, and the screen says so.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ presentation ──▶ domain ◀── data
 ```
 
 - **Domain** is plain Dart. It defines what can go wrong (`RandomIntFailure`) and returns
-  `Result<int, RandomIntFailure>`, so no Dio or `connectivity_plus` type reaches the UI.
+  `Result<RandomInt, RandomIntFailure>`, so no Dio or `connectivity_plus` type reaches the UI.
 - **Data** implements the domain interfaces. Data sources throw `NetworkException`s; the
   repository decides what each one means: fall back to a local number or report a failure.
 - **Presentation** depends on use cases only. The screen gets its cubit from a `BlocProvider`
@@ -32,7 +32,7 @@ presentation ──▶ domain ◀── data
 RandomIntViewerScreen
   └─ RandomIntViewerCubit
        └─ GetRandomIntUseCase
-            └─ RandomIntRepository ─────── Result<int, RandomIntFailure>
+            └─ RandomIntRepository ─────── Result<RandomInt, RandomIntFailure>
                  ├─ host reachable   → RandomIntRemoteDataSource → ApiClient → Dio
                  └─ host unreachable → RandomIntLocalDataSource
 ```
@@ -44,7 +44,7 @@ RandomIntViewerScreen
 | **Cubit** | The screen has two intents (refresh, pause/resume); events would be ceremony. |
 | **`start()` instead of work in the constructor** | Creating a cubit has no side effects, so tests and DI can build it freely. |
 | **Domain failures, not exceptions** | `RandomIntFailure` is an enum the UI switches over exhaustively to pick a message. Anything thrown anyway (a bug, a platform error) is reported to the `BlocObserver` and shown as a generic failure, so the screen never stays stuck loading. |
-| **Fall back only when the host is unreachable** | No network, DNS failure or connect timeout gives a local number. A server that answers with an error, garbage or too slowly is reported instead of masked. |
+| **Fall back only when the host is unreachable** | No network, DNS failure or connect timeout gives a local number, which `RandomInt.source` marks so the screen can say so. A server that answers with an error, garbage or too slowly is reported instead of masked. |
 | **Retries in `ApiClient`** | 5xx is retried with linear backoff, a slow server only once, an unreachable host never. Only idempotent methods are retried. |
 | **The countdown timer runs only while the countdown is shown** | It stops during a request and in the background and restarts after, so every second on screen is a full second. |
 | **Countdown pauses in the background** | Android cuts network access for background apps, so a refresh there would only produce a local number. |
@@ -107,7 +107,7 @@ The suite needs no network, platform channels or real waiting: time is faked wit
 | core | `ApiClient` retries, backoff, idempotency, error mapping; `AppConfig` per environment; `Result` |
 | data | connectivity mapping and stream; repository fallback and exception → failure mapping; data sources |
 | presentation | cubit countdown and its timing, refresh, failure back-off, pause/resume, unexpected errors, repeated `start()`, calls after `close()` |
-| widgets | number and placeholder, countdown, network label, disabled button, failure SnackBar, background pause, safe area, large fonts, status bar |
+| widgets | number and placeholder, offline caption, countdown, network label, disabled button, failure SnackBar, background pause, safe area, large fonts, status bar, screen reader labels |
 | DI | the whole graph resolves |
 
 Line coverage of `lib/` is about 93%. CI runs `dart format`, `flutter analyze --fatal-infos` and the tests on every push.
@@ -129,7 +129,7 @@ lib/
 │   │   └── domain/    # NetworkStatus, ConnectivityRepository, WatchNetworkStatusUseCase
 │   └── random_int_viewer/
 │       ├── data/      # remote and local data sources, repository implementation
-│       ├── domain/    # RandomIntRange, RandomIntFailure, repository, use case
+│       ├── domain/    # RandomInt, RandomIntRange, RandomIntFailure, repository, use case
 │       └── presentation/
 ├── injection.dart     # composition root
 ├── app.dart

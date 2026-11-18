@@ -2,6 +2,7 @@ import 'package:clean_architecture_demo/core/network/network_exception.dart';
 import 'package:clean_architecture_demo/core/result.dart';
 import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/data/repositories/random_int_repository_impl.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/entities/random_int.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -32,14 +33,20 @@ void main() {
     test('uses the API when online', () async {
       givenNetwork(NetworkStatus.connected);
 
-      expect(await repository.getRandomInt(), const Success<int, RandomIntFailure>(99));
+      expect(
+        await repository.getRandomInt(),
+        const Success<RandomInt, RandomIntFailure>(RandomInt.remote(99)),
+      );
       verifyNever(() => local.getRandomInt());
     });
 
     test('generates the number locally when offline, without calling the API', () async {
       givenNetwork(NetworkStatus.disconnected);
 
-      expect(await repository.getRandomInt(), const Success<int, RandomIntFailure>(1));
+      expect(
+        await repository.getRandomInt(),
+        const Success<RandomInt, RandomIntFailure>(RandomInt.device(1)),
+      );
       verifyNever(() => remote.getRandomInt());
     });
 
@@ -47,7 +54,10 @@ void main() {
       givenNetwork(NetworkStatus.connected);
       when(() => remote.getRandomInt()).thenThrow(const HostUnreachableException());
 
-      expect(await repository.getRandomInt(), const Success<int, RandomIntFailure>(1));
+      expect(
+        await repository.getRandomInt(),
+        const Success<RandomInt, RandomIntFailure>(RandomInt.device(1)),
+      );
     });
 
     group('reports a server that answers badly instead of masking it', () {
@@ -63,7 +73,7 @@ void main() {
           givenNetwork(NetworkStatus.connected);
           when(() => remote.getRandomInt()).thenThrow(exception);
 
-          expect(await repository.getRandomInt(), Failure<int, RandomIntFailure>(failure));
+          expect(await repository.getRandomInt(), Failure<RandomInt, RandomIntFailure>(failure));
           verifyNever(() => local.getRandomInt());
         });
       }

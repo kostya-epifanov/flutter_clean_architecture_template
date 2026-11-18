@@ -4,6 +4,7 @@ import 'package:clean_architecture_demo/features/connectivity/domain/entities/ne
 import 'package:clean_architecture_demo/features/connectivity/domain/repositories/connectivity_repository.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/data/datasources/random_int_local_datasource.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/data/datasources/random_int_remote_datasource.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/entities/random_int.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/domain/repositories/random_int_repository.dart';
 
@@ -20,15 +21,15 @@ class RandomIntRepositoryImpl implements RandomIntRepository {
   const RandomIntRepositoryImpl(this._connectivity, this._remote, this._local);
 
   @override
-  Future<Result<int, RandomIntFailure>> getRandomInt() async {
+  Future<Result<RandomInt, RandomIntFailure>> getRandomInt() async {
     if (await _connectivity.currentStatus() == NetworkStatus.disconnected) {
-      return Success(_local.getRandomInt());
+      return Success(RandomInt.device(_local.getRandomInt()));
     }
     try {
-      return Success(await _remote.getRandomInt());
+      return Success(RandomInt.remote(await _remote.getRandomInt()));
     } on NetworkException catch (e) {
       return switch (e) {
-        HostUnreachableException() => Success(_local.getRandomInt()),
+        HostUnreachableException() => Success(RandomInt.device(_local.getRandomInt())),
         RequestTimeoutException() => const Failure(RandomIntFailure.timeout),
         ServerException() => const Failure(RandomIntFailure.serverError),
         ParseException() => const Failure(RandomIntFailure.invalidResponse),

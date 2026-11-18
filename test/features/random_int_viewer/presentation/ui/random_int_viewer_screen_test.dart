@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:clean_architecture_demo/core/result.dart';
 import 'package:clean_architecture_demo/core/theme/app_theme.dart';
 import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/entities/random_int.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/presentation/logic/random_int_viewer_cubit.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/presentation/ui/random_int_viewer_screen.dart';
@@ -16,7 +17,7 @@ import '../../../../helpers/mocks.dart';
 
 /// Longer than the counter animation, so the final number is on screen.
 const _counterAnimation = Duration(milliseconds: 700);
-const _failure = Failure<int, RandomIntFailure>(RandomIntFailure.timeout);
+const _failure = Failure<RandomInt, RandomIntFailure>(RandomIntFailure.timeout);
 const _failureText = 'The server is not responding. Will retry shortly.';
 final _interval = RandomIntViewerCubit.defaultRefreshInterval.inSeconds;
 
@@ -34,7 +35,7 @@ void main() {
 
   tearDown(() => networkStatus.close());
 
-  void givenResults(List<Result<int, RandomIntFailure>> results) {
+  void givenResults(List<Result<RandomInt, RandomIntFailure>> results) {
     final queue = List.of(results);
     when(() => getRandomInt())
         .thenAnswer((_) async => queue.length > 1 ? queue.removeAt(0) : queue.single);
@@ -61,7 +62,7 @@ void main() {
   TextButton button(WidgetTester tester) => tester.widget<TextButton>(find.byType(TextButton));
 
   testWidgets('shows the loaded number and the refresh countdown', (tester) async {
-    givenResults([const Success(42)]);
+    givenResults([const Success(RandomInt.remote(42))]);
 
     await pumpScreen(tester);
     await settleNumber(tester);
@@ -76,7 +77,7 @@ void main() {
   testWidgets('shows a placeholder and a disabled button while the first number loads', (
     tester,
   ) async {
-    final request = Completer<Result<int, RandomIntFailure>>();
+    final request = Completer<Result<RandomInt, RandomIntFailure>>();
     when(() => getRandomInt()).thenAnswer((_) => request.future);
 
     await pumpScreen(tester);
@@ -85,15 +86,79 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(button(tester).onPressed, isNull);
 
-    request.complete(const Success(5));
+    request.complete(const Success(RandomInt.remote(5)));
     await settleNumber(tester);
     expect(find.text('5'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(button(tester).onPressed, isNotNull);
   });
 
+  group('a number generated on the device', () {
+    const caption = 'Offline: generated on the device';
+
+    bool captionVisible(WidgetTester tester) => tester
+        .widget<Visibility>(
+          find.ancestor(of: find.text(caption), matching: find.byType(Visibility)),
+        )
+        .visible;
+
+    testWidgets('is marked as such, and an API number is not', (tester) async {
+      givenResults([const Success(RandomInt.device(7)), const Success(RandomInt.remote(8))]);
+
+      await pumpScreen(tester);
+      await settleNumber(tester);
+      expect(find.text('7'), findsOneWidget);
+      expect(captionVisible(tester), isTrue);
+
+      await tester.tap(find.text('GET RANDOM NUMBER'));
+      await settleNumber(tester);
+      expect(find.text('8'), findsOneWidget);
+      expect(captionVisible(tester), isFalse);
+    });
+
+    testWidgets('does not move the number when the caption appears', (tester) async {
+      givenResults([const Success(RandomInt.remote(7)), const Success(RandomInt.device(7))]);
+
+      await pumpScreen(tester);
+      await settleNumber(tester);
+      final before = tester.getRect(find.text('7'));
+
+      await tester.tap(find.text('GET RANDOM NUMBER'));
+      await settleNumber(tester);
+      expect(captionVisible(tester), isTrue);
+      expect(tester.getRect(find.text('7')), before);
+    });
+  });
+
+  group('screen reader', () {
+    testWidgets('announces the final number once, with its origin', (tester) async {
+      final semantics = tester.ensureSemantics();
+      givenResults([const Success(RandomInt.device(42))]);
+
+      await pumpScreen(tester);
+      await tester.pump(); // deliver the number, mid-animation
+
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('42, generated on the device')),
+        isSemantics(label: '42, generated on the device', isLiveRegion: true),
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('reads the countdown as words', (tester) async {
+      final semantics = tester.ensureSemantics();
+      givenResults([const Success(RandomInt.remote(1))]);
+
+      await pumpScreen(tester);
+      await settleNumber(tester);
+
+      expect(find.bySemanticsLabel(RegExp('next in $_interval seconds')), findsOneWidget);
+      semantics.dispose();
+    });
+  });
+
   testWidgets('connectivity label goes from CHECKING to the reported status', (tester) async {
-    givenResults([const Success(1)]);
+    givenResults([const Success(RandomInt.remote(1))]);
 
     await pumpScreen(tester);
     expect(find.text('CHECKING'), findsOneWidget);
@@ -109,7 +174,7 @@ void main() {
   });
 
   testWidgets('tapping the button loads a new number', (tester) async {
-    givenResults([const Success(10), const Success(20)]);
+    givenResults([const Success(RandomInt.remote(10)), const Success(RandomInt.remote(20))]);
 
     await pumpScreen(tester);
     await settleNumber(tester);
@@ -134,7 +199,7 @@ void main() {
   });
 
   testWidgets('asks for light status bar icons on the dark background', (tester) async {
-    givenResults([const Success(1)]);
+    givenResults([const Success(RandomInt.remote(1))]);
 
     await pumpScreen(tester);
     await tester.pump();
@@ -143,7 +208,7 @@ void main() {
   });
 
   testWidgets('stops refreshing while the app is hidden and resumes when shown', (tester) async {
-    givenResults([const Success(1), const Success(2)]);
+    givenResults([const Success(RandomInt.remote(1)), const Success(RandomInt.remote(2))]);
     await pumpScreen(tester);
     await settleNumber(tester);
 
@@ -168,7 +233,7 @@ void main() {
       tester.view.padding = const FakeViewPadding(bottom: gestureInset * 3); // physical px, dpr 3
       tester.view.viewPadding = const FakeViewPadding(bottom: gestureInset * 3);
       addTearDown(tester.view.reset);
-      givenResults([const Success(1)]);
+      givenResults([const Success(RandomInt.remote(1))]);
 
       await pumpScreen(tester);
       await settleNumber(tester);
@@ -203,7 +268,7 @@ void main() {
         tester.platformDispatcher.textScaleFactorTestValue = scale;
         addTearDown(tester.view.reset);
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-        givenResults([const Success(1)]);
+        givenResults([const Success(RandomInt.device(1))]); // with the offline caption
 
         await pumpScreen(tester);
         networkStatus.add(NetworkStatus.disconnected); // the longest label

@@ -66,13 +66,44 @@ class _Number extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final number = context.select((RandomIntViewerCubit cubit) => cubit.state.number);
-    final style = Theme.of(context).textTheme.displayLarge!.copyWith(fontSize: 96);
+    final textTheme = Theme.of(context).textTheme;
+    final style = textTheme.displayLarge!.copyWith(fontSize: 96);
 
-    if (number == null) return Text('–', style: style);
-    return AnimatedCounter(
-      value: number,
-      duration: const Duration(milliseconds: 600),
-      style: style,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (number == null)
+            Text('–', style: style, semanticsLabel: 'No number yet')
+          else
+            // Announces the final number once, not every frame of the counting animation.
+            Semantics(
+              liveRegion: true,
+              label: number.isFromDevice
+                  ? '${number.value}, generated on the device'
+                  : '${number.value}',
+              excludeSemantics: true,
+              child: AnimatedCounter(
+                value: number.value,
+                duration: const Duration(milliseconds: 600),
+                style: style,
+              ),
+            ),
+          // Keeps its space while hidden, so the number does not jump when it appears.
+          Visibility(
+            visible: number?.isFromDevice ?? false,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: Text(
+              'Offline: generated on the device',
+              textAlign: TextAlign.center,
+              style: textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

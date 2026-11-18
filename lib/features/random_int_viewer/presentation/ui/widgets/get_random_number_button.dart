@@ -9,23 +9,27 @@ class GetRandomNumberButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.watch<RandomIntViewerCubit>();
-    final state = cubit.state;
-    final isLoading = state.status == RequestStatus.loading;
+    final (status, secondsToRefresh) = context.select(
+      (RandomIntViewerCubit cubit) => (cubit.state.status, cubit.state.secondsToRefresh),
+    );
+    final isLoading = status == RequestStatus.loading;
 
     return TextButton(
-      onPressed: isLoading ? null : cubit.refresh,
+      onPressed: isLoading ? null : context.read<RandomIntViewerCubit>().refresh,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Flexible(child: Text('GET RANDOM NUMBER', overflow: TextOverflow.ellipsis)),
           const SizedBox(width: 4),
-          switch (state.status) {
+          switch (status) {
             RequestStatus.loading => const SizedBox.square(
               dimension: 12,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(strokeWidth: 2, semanticsLabel: 'Loading'),
             ),
-            RequestStatus.success || RequestStatus.failure => Text('[${state.secondsToRefresh}]'),
+            RequestStatus.success || RequestStatus.failure => Text(
+              '[$secondsToRefresh]',
+              semanticsLabel: 'next in $secondsToRefresh seconds',
+            ),
             RequestStatus.initial => const SizedBox.shrink(),
           },
         ],

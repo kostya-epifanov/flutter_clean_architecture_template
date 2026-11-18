@@ -4,6 +4,7 @@ import 'package:clean_architecture_demo/core/result.dart';
 import 'package:clean_architecture_demo/core/ui/request_status.dart';
 import 'package:clean_architecture_demo/features/connectivity/domain/entities/network_status.dart';
 import 'package:clean_architecture_demo/features/connectivity/domain/usecases/watch_network_status_usecase.dart';
+import 'package:clean_architecture_demo/features/random_int_viewer/domain/entities/random_int.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/domain/failures/random_int_failure.dart';
 import 'package:clean_architecture_demo/features/random_int_viewer/domain/usecases/get_random_int_usecase.dart';
 import 'package:equatable/equatable.dart';
@@ -104,7 +105,7 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
     _stopCountdown();
     emit(state.copyWith(status: RequestStatus.loading));
 
-    Result<int, RandomIntFailure> result;
+    Result<RandomInt, RandomIntFailure> result;
     try {
       result = await _getRandomInt();
     } catch (error, stackTrace) {

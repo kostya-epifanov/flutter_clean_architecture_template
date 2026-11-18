@@ -5,7 +5,7 @@ class RandomIntViewerState extends Equatable {
   final NetworkStatus networkStatus;
 
   /// `null` until the first number is loaded.
-  final int? number;
+  final RandomInt? number;
 
   final int secondsToRefresh;
 
@@ -23,7 +23,7 @@ class RandomIntViewerState extends Equatable {
   RandomIntViewerState copyWith({
     RequestStatus? status,
     NetworkStatus? networkStatus,
-    int? number,
+    RandomInt? number,
     int? secondsToRefresh,
     RandomIntFailure? failure,
   }) {
