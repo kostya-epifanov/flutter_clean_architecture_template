@@ -91,6 +91,92 @@ void main() {
     );
   });
 
+  test('a second start does not subscribe, load or tick twice', () {
+    givenResults([const Success(1)]);
+
+    fakeAsync((async) {
+      final cubit = buildCubit()..start();
+      async.flushMicrotasks();
+
+      verify(() => watchNetworkStatus()).called(1);
+      verify(() => getRandomInt()).called(1);
+      expect(async.periodicTimerCount, 1);
+
+      async.elapse(const Duration(seconds: 1));
+      expect(cubit.state.secondsToRefresh, _interval - 1);
+      cubit.close();
+    });
+  });
+
+  test('start after close does nothing', () async {
+    final cubit = RandomIntViewerCubit(watchNetworkStatus, getRandomInt);
+    await cubit.close();
+
+    cubit.start();
+
+    verifyNever(() => watchNetworkStatus());
+    verifyNever(() => getRandomInt());
+  });
+
+  group('unexpected errors', () {
+    final error = StateError('platform failure');
+
+    blocTest<RandomIntViewerCubit, RandomIntViewerState>(
+      'a throwing request is reported and ends as an unknown failure, not stuck loading',
+      setUp: () => when(() => getRandomInt()).thenThrow(error),
+      build: () => RandomIntViewerCubit(watchNetworkStatus, getRandomInt),
+      act: (cubit) => cubit.start(),
+      expect: () => [
+        RandomIntViewerState(status: RequestStatus.loading, secondsToRefresh: _interval),
+        RandomIntViewerState(
+          status: RequestStatus.failure,
+          failure: RandomIntFailure.unknown,
+          secondsToRefresh: _interval,
+        ),
+      ],
+      errors: () => [error],
+    );
+
+    test('the countdown keeps running after a throwing request', () {
+      final queue = <Future<Result<int, RandomIntFailure>> Function()>[
+        () => Future.error(error),
+        () async => const Success(7),
+      ];
+      when(() => getRandomInt()).thenAnswer((_) => queue.removeAt(0)());
+
+      fakeAsync((async) {
+        final cubit = buildCubit();
+        async.flushMicrotasks();
+        expect(cubit.state.status, RequestStatus.failure);
+
+        async.elapse(Duration(seconds: _interval));
+        expect(cubit.state.number, 7);
+        cubit.close();
+      });
+    });
+
+    blocTest<RandomIntViewerCubit, RandomIntViewerState>(
+      'a network status stream error is reported and later statuses still arrive',
+      setUp: givenPendingRequest,
+      build: () => RandomIntViewerCubit(watchNetworkStatus, getRandomInt),
+      act: (cubit) async {
+        cubit.start();
+        networkStatus.addError(error);
+        await pumpEventQueue();
+        networkStatus.add(NetworkStatus.connected);
+      },
+      skip: 1, // loading
+      expect: () => [
+        RandomIntViewerState(
+          status: RequestStatus.loading,
+          networkStatus: NetworkStatus.connected,
+          secondsToRefresh: _interval,
+        ),
+      ],
+      errors: () => [error],
+    );
+  });
+
   test('clears the failure once the next request starts', () {
     givenResults([_failure, const Success(8)]);
 
@@ -191,6 +277,52 @@ void main() {
       });
     });
 
+    test('the first tick after a load comes a full second after the response', () {
+      fakeAsync((async) {
+        final request = givenPendingRequest();
+        final cubit = buildCubit();
+
+        async.elapse(const Duration(milliseconds: 1500));
+        request.complete(const Success(3));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(milliseconds: 999));
+        expect(cubit.state.secondsToRefresh, _interval);
+        async.elapse(const Duration(milliseconds: 1));
+        expect(cubit.state.secondsToRefresh, _interval - 1);
+        cubit.close();
+      });
+    });
+
+    test('a manual refresh mid-second restarts the second', () {
+      givenResults([const Success(1), const Success(2)]);
+
+      runCubit((async, cubit) {
+        async.elapse(const Duration(milliseconds: 1500));
+        expect(cubit.state.secondsToRefresh, _interval - 1);
+
+        cubit.refresh();
+        async.flushMicrotasks();
+        expect(cubit.state.secondsToRefresh, _interval);
+
+        async.elapse(const Duration(milliseconds: 999));
+        expect(cubit.state.secondsToRefresh, _interval);
+        async.elapse(const Duration(milliseconds: 1));
+        expect(cubit.state.secondsToRefresh, _interval - 1);
+      });
+    });
+
+    test('no timer runs while a request is in flight', () {
+      fakeAsync((async) {
+        givenPendingRequest();
+        final cubit = buildCubit();
+        async.flushMicrotasks();
+
+        expect(async.periodicTimerCount, 0);
+        cubit.close();
+      });
+    });
+
     test('pauses the countdown while a request is in flight', () {
       fakeAsync((async) {
         final request = givenPendingRequest();
@@ -244,6 +376,17 @@ void main() {
         cubit.close();
       });
     });
+  });
+
+  test('refresh after close neither throws nor requests', () async {
+    givenResults([const Success(1)]);
+    final cubit = buildCubit();
+    await pumpEventQueue();
+    await cubit.close();
+
+    cubit.refresh();
+
+    verify(() => getRandomInt()).called(1);
   });
 
   group('pause and resume', () {

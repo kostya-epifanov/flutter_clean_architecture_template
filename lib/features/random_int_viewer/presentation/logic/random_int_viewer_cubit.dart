@@ -23,6 +23,7 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   final Duration refreshInterval;
   final DateTime Function() _now;
 
+  bool _started = false;
   StreamSubscription<NetworkStatus>? _networkSubscription;
   Timer? _timer;
 
@@ -38,13 +39,15 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   }) : _now = now ?? DateTime.now,
        super(RandomIntViewerState(secondsToRefresh: refreshInterval.inSeconds));
 
-  /// Starts watching the network, the countdown and the first load. Call once.
+  /// Starts watching the network, the countdown and the first load. Later calls do nothing.
   void start() {
-    assert(_networkSubscription == null, 'start() called twice');
+    if (_started || isClosed) return;
+    _started = true;
     _networkSubscription = _watchNetworkStatus().listen(
       (status) => emit(state.copyWith(networkStatus: status)),
+      // The label keeps its last value; the error still reaches the BlocObserver.
+      onError: addError,
     );
-    _startCountdown();
     _load();
   }
 
@@ -54,33 +57,39 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   void pause() {
     if (_pausedAt != null || isClosed) return;
     _pausedAt = _now();
-    _timer?.cancel();
+    _stopCountdown();
   }
 
   /// Continues the countdown minus the time spent paused, or loads at once if the refresh
-  /// fell due meanwhile.
+  /// fell due meanwhile. A request still in flight starts its own countdown when it ends.
   void resume() {
     final pausedAt = _pausedAt;
     if (pausedAt == null || isClosed) return;
     _pausedAt = null;
-    _startCountdown();
-
     if (state.status == RequestStatus.loading) return;
+
     final secondsLeft = state.secondsToRefresh - _now().difference(pausedAt).inSeconds;
     if (secondsLeft > 0) {
       emit(state.copyWith(secondsToRefresh: secondsLeft));
+      _startCountdown();
     } else {
       _load();
     }
   }
 
+  /// Ticks run only while the countdown is visible: not during a request, not while paused.
+  /// A new timer per countdown keeps every second a full second long.
   void _startCountdown() {
+    _stopCountdown();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
-  void _onTick() {
-    if (state.status == RequestStatus.loading) return;
+  void _stopCountdown() {
+    _timer?.cancel();
+    _timer = null;
+  }
 
+  void _onTick() {
     final secondsLeft = state.secondsToRefresh - 1;
     if (secondsLeft > 0) {
       emit(state.copyWith(secondsToRefresh: secondsLeft));
@@ -90,13 +99,21 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
   }
 
   Future<void> _load() async {
-    if (state.status == RequestStatus.loading) return;
+    if (isClosed || state.status == RequestStatus.loading) return;
 
+    _stopCountdown();
     emit(state.copyWith(status: RequestStatus.loading));
-    final result = await _getRandomInt();
+
+    Result<int, RandomIntFailure> result;
+    try {
+      result = await _getRandomInt();
+    } catch (error, stackTrace) {
+      // Expected failures arrive as a Result. Anything thrown is a bug or a platform error:
+      // report it to the BlocObserver and keep the screen usable instead of stuck loading.
+      addError(error, stackTrace);
+      result = const Failure(RandomIntFailure.unknown);
+    }
     if (isClosed) return;
-    // The new countdown starts now, so a pause that began during the request counts from here.
-    if (_pausedAt != null) _pausedAt = _now();
 
     // A full interval follows a failure too, so a failing server is not hit every second.
     final secondsToRefresh = refreshInterval.inSeconds;
@@ -112,11 +129,18 @@ class RandomIntViewerCubit extends Cubit<RandomIntViewerState> {
         secondsToRefresh: secondsToRefresh,
       ),
     });
+
+    if (_pausedAt != null) {
+      // The new countdown starts now, so a pause that began during the request counts from here.
+      _pausedAt = _now();
+    } else {
+      _startCountdown();
+    }
   }
 
   @override
   Future<void> close() async {
-    _timer?.cancel();
+    _stopCountdown();
     await _networkSubscription?.cancel();
     return super.close();
   }

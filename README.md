@@ -43,9 +43,10 @@ RandomIntViewerScreen
 |---|---|
 | **Cubit** | The screen has two intents (refresh, pause/resume); events would be ceremony. |
 | **`start()` instead of work in the constructor** | Creating a cubit has no side effects, so tests and DI can build it freely. |
-| **Domain failures, not exceptions** | `RandomIntFailure` is an enum the UI switches over exhaustively to pick a message. Programming errors are not caught and still crash loudly. |
+| **Domain failures, not exceptions** | `RandomIntFailure` is an enum the UI switches over exhaustively to pick a message. Anything thrown anyway (a bug, a platform error) is reported to the `BlocObserver` and shown as a generic failure, so the screen never stays stuck loading. |
 | **Fall back only when the host is unreachable** | No network, DNS failure or connect timeout gives a local number. A server that answers with an error, garbage or too slowly is reported instead of masked. |
 | **Retries in `ApiClient`** | 5xx is retried with linear backoff, a slow server only once, an unreachable host never. Only idempotent methods are retried. |
+| **The countdown timer runs only while the countdown is shown** | It stops during a request and in the background and restarts after, so every second on screen is a full second. |
 | **Countdown pauses in the background** | Android cuts network access for background apps, so a refresh there would only produce a local number. |
 | **`AppConfig` is an object** | Built once from `--dart-define`s in `main` and passed to the composition root, so config is testable and nothing reads globals. |
 
@@ -102,7 +103,7 @@ The suite needs no network, platform channels or real waiting: time is faked wit
 |---|---|
 | core | `ApiClient` retries, backoff, idempotency, error mapping; `AppConfig` per environment; `Result` |
 | data | connectivity mapping and stream; repository fallback and exception → failure mapping; data sources |
-| presentation | cubit countdown, refresh, failure back-off, pause/resume, close safety |
+| presentation | cubit countdown and its timing, refresh, failure back-off, pause/resume, unexpected errors, repeated `start()`, calls after `close()` |
 | widgets | number and placeholder, countdown, network label, disabled button, failure SnackBar, background pause, safe area, large fonts, status bar |
 | DI | the whole graph resolves |
 
@@ -114,6 +115,7 @@ Line coverage of `lib/` is about 93%. CI runs `dart format`, `flutter analyze --
 lib/
 ├── core/
 │   ├── config/        # Environment, AppConfig
+│   ├── logging/       # AppBlocObserver
 │   ├── network/       # ApiClient, NetworkException
 │   ├── theme/
 │   ├── ui/            # RequestStatus
