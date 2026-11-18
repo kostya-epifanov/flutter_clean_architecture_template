@@ -76,6 +76,9 @@ flutter run                                   # development
 flutter run --dart-define=ENVIRONMENT=staging # development | staging | production
 ```
 
+An unknown `ENVIRONMENT` value stops the app at startup rather than falling back to
+development. Logging covers method, URL, status and errors, never headers or bodies.
+
 | Environment | Logging | Request timeout | Retries (5xx) | Retries (timeout) |
 |---|---|---|---|---|
 | development, staging | on  | 30 s | 3 | 1 |

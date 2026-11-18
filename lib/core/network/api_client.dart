@@ -33,10 +33,11 @@ class ApiClient {
     );
     if (config.enableLogging) {
       dio.interceptors.add(
+        // Method, URL, status and errors only: headers and bodies can carry tokens or
+        // personal data, and logs end up in places that are not meant to hold them.
         LogInterceptor(
           requestHeader: false,
           responseHeader: false,
-          responseBody: true,
           logPrint: (message) => log('$message', name: 'http'),
         ),
       );
@@ -87,10 +88,13 @@ class ApiClient {
         throw _toNetworkException(e);
       }
 
+      // A malformed body surfaces as a FormatException or a TypeError from a cast. Any other
+      // error is a bug in the parser and propagates as is.
       try {
         return parser(response.data);
-      } catch (e) {
-        // A malformed body surfaces as a FormatException or a TypeError from a cast.
+      } on FormatException catch (e) {
+        throw ParseException(e);
+      } on TypeError catch (e) {
         throw ParseException(e);
       }
     }

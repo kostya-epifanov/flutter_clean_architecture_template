@@ -10,13 +10,17 @@ void main() {
       'staging': Environment.staging,
       'stg': Environment.staging,
       'development': Environment.development,
+      'dev': Environment.development,
       '': Environment.development,
-      'typo': Environment.development,
     };
 
     for (final MapEntry(key: name, value: expected) in cases.entries) {
       test("'$name' -> ${expected.name}", () => expect(Environment.parse(name), expected));
     }
+
+    test('rejects an unknown name instead of falling back to development', () {
+      expect(() => Environment.parse('prodution'), throwsArgumentError);
+    });
   });
 
   group('AppConfig.forEnvironment', () {

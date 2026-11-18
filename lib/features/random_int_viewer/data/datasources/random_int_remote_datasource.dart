@@ -7,7 +7,8 @@ class RandomIntRemoteDataSource {
 
   const RandomIntRemoteDataSource(this._client);
 
-  /// Throws a `NetworkException` when the request fails.
+  /// Throws a `NetworkException` when the request fails, and a `ParseException` when the
+  /// answer is not a number in `RandomIntRange`.
   Future<int> getRandomInt() {
     return _client.get(
       '/integers/',
@@ -19,7 +20,15 @@ class RandomIntRemoteDataSource {
         'base': 10,
         'format': 'plain',
       },
-      parser: (data) => int.parse('$data'.trim()),
+      parser: _parse,
     );
+  }
+
+  static int _parse(Object? data) {
+    final value = int.parse('$data'.trim());
+    if (value < RandomIntRange.min || value > RandomIntRange.max) {
+      throw FormatException('$value is outside ${RandomIntRange.min}..${RandomIntRange.max}');
+    }
+    return value;
   }
 }

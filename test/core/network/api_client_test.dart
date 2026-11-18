@@ -57,6 +57,15 @@ void main() {
       expect(adapter.requests, hasLength(1));
     });
 
+    test('lets an error that is not a malformed body propagate unwrapped', () async {
+      final client = buildClient([respond('1')]);
+
+      await expectLater(
+        client.get<int>(_path, parser: (_) => throw StateError('parser bug')),
+        throwsStateError,
+      );
+    });
+
     group('retries', () {
       test('retries a timeout and returns the next success', () async {
         final client = buildClient([throwDio(DioExceptionType.receiveTimeout), respond('7')]);

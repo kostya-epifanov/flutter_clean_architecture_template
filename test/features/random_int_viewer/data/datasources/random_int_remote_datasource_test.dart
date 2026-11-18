@@ -49,5 +49,13 @@ void main() {
 
       await expectLater(dataSource.getRandomInt(), throwsA(isA<ParseException>()));
     });
+
+    for (final body in ['0', '101', '-5']) {
+      test('throws ParseException for $body, which is outside 1..100', () async {
+        final dataSource = buildDataSource([respond(body)]);
+
+        await expectLater(dataSource.getRandomInt(), throwsA(isA<ParseException>()));
+      });
+    }
   });
 }
